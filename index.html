@@ -1223,9 +1223,29 @@ function applyAudio(){
 }
 function ac(){
   if(!AC){ try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } }
-  if(AC && AC.state==='suspended') AC.resume();
+  if(AC && AC.state==='suspended'){ try{ AC.resume(); }catch(e){} }
   return AC;
 }
+/* iOS 解锁：首次触摸就建上下文并播一个无声缓冲，之后才能出音 */
+function iosUnlock(){
+  try{
+    if(!AC){ AC = new (window.AudioContext||window.webkitAudioContext)(); }
+    if(AC.state==='suspended'){ AC.resume(); }
+    var b=AC.createBuffer(1,1,22050);
+    var s=AC.createBufferSource();
+    s.buffer=b; s.connect(AC.destination); s.start(0);
+  }catch(e){}
+}
+['touchstart','touchend','mousedown','click','keydown'].forEach(function(ev){
+  document.addEventListener(ev, function once(){
+    iosUnlock();
+    document.removeEventListener(ev, once);
+  }, {passive:true});
+});
+document.addEventListener('visibilitychange', function(){
+  if(!document.hidden){ try{ if(AC && AC.state==='suspended') AC.resume(); }catch(e){} }
+});
+
 function tone(f,dur,vol,type){
   const c=ac(); if(!c) return;
   const o=c.createOscillator(), g=c.createGain();
