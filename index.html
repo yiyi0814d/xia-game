@@ -6785,6 +6785,26 @@ function mkDone(){
   outLet(h+outBackBar(), YARD_BG);
   mkBindBack(function(){ mkCraftKind(''); });
 }
+function craftPrice(k){
+  const c=craftKindOf(k);
+  return Math.round((c?c.cost:30)*1.8);
+}
+function craftSell(k){
+  ensureItems();
+  if((S.items[k]||0)<1){ toast('这件没有了。'); return; }
+  const c=craftKindOf(k);
+  const cost=c?c.cost:30;
+  const price=craftPrice(k);
+  S.items[k]--; if(S.items[k]<=0) delete S.items[k];
+  S.money+=price;
+  save(); refresh(); coin();
+  bagPaint();
+  modalChoose('卖掉',
+    '（摊主拿过去看了看针脚，给了你 '+price+' 币。）<br><br>'
+    +'料钱 '+cost+'，这一件净赚 '+(price-cost)+'。'
+    +'<br>他要是问起来，就说没做过。',
+    [ { label:'好', cb:function(){ bagPaint(); } } ]);
+}
 function craftOpen(k){
   const c=craftKindOf(k);
   const desc=c?c.d:'你做的。';
@@ -6792,8 +6812,10 @@ function craftOpen(k){
   modalChoose(k,
     '（'+k+'。'+desc+'）针脚歪了两处——歪点好，看得出是人手做的。'
     +(given?'<br><br><i class="ynar">这件已经给他了。</i>':''),
-    given ? [ { label:'收好', cb:function(){} } ]
+    given ? [ { label:'拿去卖（+'+craftPrice(k)+' 币）', cb:function(){ craftSell(k); } },
+              { label:'收好', cb:function(){} } ]
           : [ { label:'给他', cb:function(){ craftGive(k); } },
+              { label:'拿去卖（+'+craftPrice(k)+' 币）', cb:function(){ craftSell(k); } },
               { label:'先收着', cb:function(){} } ]);
 }
 function craftGive(k){
