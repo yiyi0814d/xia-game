@@ -1363,9 +1363,9 @@ function say(t,feel,face){
   sayFace(face||FACE_AUTO[f]||'normal');
 }
 /* 旁白 */
-function narrate(t){ dPush('',t,null); }
+function narrate(t){ if(gPageLive()){ gStoryPush('',t); return; } dPush('',t,null); }
 /* 玩家自己在做事/说话：名字栏写「你」 */
-function youSay(t){ dPush('你',t,null); }
+function youSay(t){ if(gPageLive()){ gStoryPush('你',t); return; } dPush('你',t,null); }
 /* 依依说的话 */
 function sayMe(t){ dPush('你',t,null); }
 
@@ -2145,6 +2145,10 @@ function gStoryPush(who,text){
   d.textContent = who ? (who+'：'+text) : text;
   el.appendChild(d);
   el.scrollTop = el.scrollHeight;
+}
+/* 人在棋局页里、棋盘上方那块还挂着——剧情一律走那块，别落去被盖住的主页对话区 */
+function gPageLive(){
+  try{ return !!(other && other.classList.contains('show') && $('gStory')); }catch(e){ return false; }
 }
 function gStoryBtns(list){
   const el=$('gStory'); if(!el) return;
@@ -4388,6 +4392,7 @@ function splitInlines(txt){
 }
 function playMixed(mixed, opt){
   opt=opt||{};
+  if(gPageLive()){ gPlay(mixed, opt.as||'夏萧因'); return; }
   /* 街坊那几位说话：挂他们自己的名字，脸不动 */
   function pushSay(v){
     if(opt.as){
@@ -4420,6 +4425,7 @@ function playMixed(mixed, opt){
 }
 /* 选项：画面正中，上下两个 */
 function choiceBox(list){
+  if(gPageLive()){ gStoryBtns((list||[]).map(function(o){ return { label:o.label, fn:o.fn, grey:o.grey }; })); return; }
   if(!actions) return;
   actions.classList.add('choice');
   actions.innerHTML='';
