@@ -1486,6 +1486,7 @@ function refresh(){
 function addMood(v){ S.mood=clamp(S.mood+v,0,100); refresh(); }
 function addEnergy(v){ S.energy=clamp(S.energy+v,0,100); refresh(); }
 function addHealth(v){ S.health=clamp(S.health+v,0,100); refresh(); }
+function healRest(v){ if(S.sick) return; addHealth(v); }  /* 病着的时候：吃好睡好也养不回来，得看医生或吃药 */
 
 /* ---------------- 弹窗 ---------------- */
 function modalOpen(html){
@@ -1661,7 +1662,7 @@ function renderHome(){
   if(!S.sick && (S.health||0)<=SICK_IN) sickCheck();
   refresh();
   if(S.asleep) tip('他还在睡。','narr');
-  else if(S.sick) tip('夏萧因{病着}，喂点药、陪陪他');
+  else if(S.sick) tip('夏萧因{今天有点不对劲}，问问怎么了');
   else if(S.mood<30) tip('夏萧因{不开心}，问问他什么情况吧');
   else if(S.energy<25) tip('夏萧因{困了}，让他去睡吧');
 }
@@ -1751,8 +1752,7 @@ function poke(){
   S.pokeCount++;
   const th=$('tapHint'); if(th) th.classList.add('gone');
   if(S.sick){
-    say(pickLine(SICK_POKE,'sickpoke'), '夏萧因', 'bumman');
-    toast('他还病着。');
+    narrate('夏萧因身上烫得吓人，可能生病了，今天一整天都没有精力了。');
     addMood(1); save(); return;
   }
   const why=xyAngryWhy();
@@ -1845,7 +1845,7 @@ function doFeed(f){
     save();
     return;
   }
-  addHealth(f.health);
+  if(!S.sick) addHealth(f.health);
   addEnergy(f.energy);
   if(c<=2){
     narrate('夏萧因优雅地把食物吃完了。');
@@ -1945,16 +1945,16 @@ function bath(){
   const bc=S.bathCount;
   if(bc===1){
     narrate('你得到了一个香香的夏萧因。');
-    addMood(6); addHealth(3);
+    addMood(6); healRest(3);
   }else if(bc<=3){
     narrate('洗好了。他头发还湿着，被你按着擦了两下。');
-    addMood(4); addHealth(2);
+    addMood(4); healRest(2);
   }else if(bc<=8){
     narrate('他由着你摆弄，耳根和脸都被热气熏红了，不知道是水汽还是别的。');
-    addMood(4); addHealth(2);
+    addMood(4); healRest(2);
   }else{
     narrate('他伸手拿过毛巾，自己擦了两下，又停下来把毛巾递给你。');
-    addMood(5); addHealth(2);
+    addMood(5); healRest(2);
   }
   bathTail();
   save();
@@ -2497,7 +2497,7 @@ function sleepAct(){
 function wakeHim(){
   S.asleep=false; S.justWoke=true;
   addEnergy(45); addMood(3);
-  if(S.sick){ addHealth(9); narrate('这一觉睡得沉，他醒来脸色好了点。'); sickCheck(); }
+  if(S.sick){ narrate('他睡了一觉，还是没什么力气。'); }
   renderHome();
   narrate('他坐起来，看了你一眼，没说话。');
   save();
@@ -5844,7 +5844,8 @@ function sickCheck(){
   const h=S.health||0;
   if(!S.sick && h<=SICK_IN){
     S.sick=1; S.sickDay=0;
-    toast('夏萧因病倒了。');
+    S.energy=Math.min(S.energy||0,20);
+    toast('夏萧因今天有点不对劲。');
     narrate('（他坐在榻边，一只手撑着额角，没抬头。）');
     say('「……不用管我。」', '夏萧因', 'bumman');
   }else if(S.sick && h>=SICK_OUT){
@@ -5868,7 +5869,8 @@ function sitWithHim(){
   if(!S.sick){ toast('他不用你陪。'); return; }
   S.careN=(S.careN||0)+1;
   narrate(pickLine(SICK_CARE,'sickcare'));
-  addHealth(4); addMood(6); addEnergy(-2);
+  addMood(6); addEnergy(-2);
+  setTimeout(function(){ toast('陪一会儿他好受些，病还是得看医生。'); },600);
   save(); sickCheck(); refresh();
 }
 const HOSP_COST=50;
