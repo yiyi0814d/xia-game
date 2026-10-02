@@ -1069,6 +1069,19 @@ function stkPaint(){
 
 /* —— 夜里关灯 —— */
 body.night #bg{filter:brightness(.45) saturate(.85);}
+/* ——生日蛋糕—— */
+.mnum{width:52px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.22);
+  color:#efe9f7;border-radius:8px;padding:5px 7px;font-size:13px;text-align:center;margin:0 4px;}
+.cakeWrap{width:190px;margin:20px auto 8px;text-align:center;}
+.cakeCandle{width:10px;height:34px;background:#f2e7d8;margin:0 auto;border-radius:3px;}
+#cFlame{width:14px;height:20px;margin:0 auto 3px;border-radius:50% 50% 45% 45%;
+  background:radial-gradient(circle at 50% 65%,#fff3b0,#ffb545 60%,rgba(255,120,40,0));
+  animation:flick .9s infinite alternate;}
+#cFlame.out{display:none;}
+@keyframes flick{from{transform:scaleY(1);opacity:.95}to{transform:scaleY(1.15) translateY(-1px);opacity:1}}
+.cakeTop{width:150px;height:32px;background:#f7d9e6;border-radius:12px 12px 6px 6px;margin:0 auto;}
+.cakeMid{width:170px;height:32px;background:#e9c7dd;border-radius:6px;margin:0 auto;}
+.cakeBot{width:186px;height:34px;background:#d9b4d0;border-radius:8px 8px 12px 12px;margin:0 auto;}
 </style>
 </head>
 <body>
@@ -1209,6 +1222,65 @@ function dailyGreet(){
   if(wd===0 || wd===6){ setTimeout(function(){ say('「今天不睡懒觉？」','夏萧因','normal'); },900); return; }
   setTimeout(function(){ say(pickLine(DAY_HELLO,'dayhi'),'夏萧因','normal'); },900);
 }
+/* ——生日蛋糕（2026-10-02）—— */
+function myBdayToday(){
+  if(!S.myBm || !S.myBd) return false;
+  var d=new Date();
+  return (d.getMonth()+1===S.myBm && d.getDate()===S.myBd);
+}
+function openCake(){
+  other.classList.remove('earnbg'); other.classList.remove('bdaybg');
+  other.classList.add('panelbg');
+  other.classList.add('show');
+  var _o=$('out'); if(_o) _o.classList.remove('show');
+  curTab='other'; tabSet('other');
+  var y=new Date().getFullYear();
+  var lit=(S.cakeYear!==y);
+  other.innerHTML='<div class="ghead"><button class="mini grey" id="cBack">回房间</button><h2>蛋糕</h2></div>'
+   +'<div class="cakeWrap">'
+   +'<div id="cFlame"'+(lit?'':' class="out"')+'></div>'
+   +'<div class="cakeCandle"></div><div class="cakeTop"></div><div class="cakeMid"></div><div class="cakeBot"></div>'
+   +'</div>'
+   +'<div class="obtns" style="margin-top:14px">'
+   +(lit?'<button class="osay" id="cBlow">吹蜡烛</button>':'')
+   +'</div>'
+   +'<div class="osaybox" id="cSay">'+(lit?'（他把蛋糕放在桌上。蜡烛点着，火苗晃。）':'（蜡烛已经吹过了。）')+'</div>';
+  var bk=$('cBack'); if(bk) bk.onclick=function(){ click(); openOther(); };
+  var b=$('cBlow'); if(b) b.onclick=function(){ click(); blowTry(); };
+}
+var _blowOn=false;
+function blowTry(){
+  if(_blowOn){ cakeOut(); return; }   /* 已经在听：再点一下当手动吹 */
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ cakeOut(); return; }
+  var AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC){ cakeOut(); return; }
+  toast('对着屏幕吹——够劲就灭。不行就再点一下。');
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(st){
+    var ctx=new AC();
+    var src=ctx.createMediaStreamSource(st);
+    var an=ctx.createAnalyser(); an.fftSize=512;
+    src.connect(an);
+    var buf=new Uint8Array(an.frequencyBinCount);
+    _blowOn=true;
+    (function loop(){
+      if(!_blowOn){ try{st.getTracks().forEach(function(t){t.stop();});}catch(e){} try{ctx.close();}catch(e){} return; }
+      an.getByteFrequencyData(buf);
+      var sum=0; for(var i=2;i<24;i++) sum+=buf[i];
+      if(sum/22>150){ cakeOut(); return; }
+      requestAnimationFrame(loop);
+    })();
+  }).catch(function(){ toast('浏览器不给麦克风。这一下就算你吹过了。'); cakeOut(); });
+}
+function cakeOut(){
+  var y=new Date().getFullYear();
+  if(S.cakeYear===y) return;
+  S.cakeYear=y; _blowOn=false; save();
+  var f=$('cFlame'); if(f) f.classList.add('out');
+  var b=$('cBlow'); if(b) b.style.display='none';
+  var el=$('cSay'); if(el) el.textContent='（蜡烛灭了。他看了你两秒，把第一块切好推过来。）';
+  setTimeout(function(){ var e2=$('cSay'); if(e2) e2.textContent='「许愿。」「……不许也行，反正每年都这样。」'; },1400);
+  addMood(6); save();
+}
 function roomBG(){ return S.newhome?HOME2.live:IMG.room; }
 function sleepBG(){ return S.newhome?HOME2.sleep:IMG.sleep; }
 function moveIn(){
@@ -1230,7 +1302,7 @@ const DEFAULT = {
   playCount:0, gWang:0, gWangFav:0, wangOpen:0, chenOpen:0, zhouOpen:0, wangRoom:0, yardCount:0, shopCount:0, liWang:0, liFav:0, wangLink:0,
   shenWang:0, shenFav:0, shenCalm:0, xyAct:0, xyEnd:0,
   rule:0, lastLove:0, lastPay:0, loveWarn:0, payWarn:0, lastFeed:0, full:0,
-  sick:0, sickDay:0, careN:0, newhome:0, house:0, dayStamp:"", lastSeen:0,
+  sick:0, sickDay:0, careN:0, newhome:0, house:0, dayStamp:"", lastSeen:0, myBm:0, myBd:0, cakeYear:0,
   name:'夫人', mood:70, energy:80, health:80, money:500,
   foods:{}, fish:[], dolls:[],
   pokeCount:0, feedCount:0, bathCount:0,
@@ -1700,6 +1772,9 @@ function renderHome(){
     : [['喂食',feed],['洗澡',bath],['玩耍',play],['睡觉',sleepAct]];
   if(S.house && !S.asleep){
     list.unshift(S.newhome?['搬回旧屋',moveBack]:['搬去新家',moveIn]);
+  }
+  if(myBdayToday() && !S.asleep && S.cakeYear!==new Date().getFullYear()){
+    list.unshift(['桌上的蛋糕',openCake]);
   }
   if(S.sick && !S.asleep){
     list.unshift(['喂药',giveMed],['陪着他',sitWithHim]);
@@ -5638,8 +5713,20 @@ function morePaint(){
     +'<button class="mbtn grey" id="mBlk">'+(S && S.blkOn===0 ? '放出小方块' : '收起小方块')+'</button>'
     +'</div>';
   h+='</div>';
+  h+='<div class="msec"><div class="mhead">我的生日</div>'
+    +'<div class="mrow"><span class="mlab">月</span>'
+    +'<input type="number" class="mnum" id="mBm" min="1" max="12" value="'+(S.myBm||'')+'">'
+    +'<span class="mlab">日</span>'
+    +'<input type="number" class="mnum" id="mBd" min="1" max="31" value="'+(S.myBd||'')+'">'
+    +'<button class="mbtn" id="mBsave">记住</button></div>'
+    +'<div class="oline2" style="margin-top:8px">填了，到那天他自己会准备。</div></div>';
   b.innerHTML=h;
   var _e=$('mExport'); if(_e) _e.onclick=function(){ click(); svExport(); };
+  var _bs=$('mBsave'); if(_bs) _bs.onclick=function(){ click();
+    var m=parseInt(($('mBm')||{}).value,10), dd=parseInt(($('mBd')||{}).value,10);
+    if(!(m>=1&&m<=12&&dd>=1&&dd<=31)){ toast('日子得填对。'); return; }
+    S.myBm=m; S.myBd=dd; save(); toast('记住了。那天他自己会准备。');
+  };
   var _i=$('mImport'); if(_i) _i.onclick=function(){ click(); svImport(); };
   var _b=$('mBlk'); if(_b) _b.onclick=function(){ click(); S.blkOn = (S.blkOn===0) ? 1 : 0; save(); if(window.__blkHide) window.__blkHide(); morePaint(); };
   const r1=$('mSfx');
