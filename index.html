@@ -4731,6 +4731,7 @@ const G_OPEN={
     short:['「快点。」','「别磨叽。」','「来。」']
   }
 };
+/* 开场白也落在棋盘上方那块，别再往主页对话区发——那边被棋局页盖着，玩家会以为点不动 */
 function gStartTalk(k){
   const d=G_OPEN[k]; if(!d) return false;
   const key=k+'Open';
@@ -4738,8 +4739,14 @@ function gStartTalk(k){
   const first=(S[key]===1);
   save();
   const txt=first ? d.first : pickLine(d.short, 'open_'+k);
-  playMixed(txt, { as:G_LEVEL[k].n, noFace:true });
-  choiceBox([ { label:'开局', fn:function(){ gInit(); gomokuView(); } } ]);
+  gInit();
+  gomokuView();
+  setTimeout(function(){
+    gHideChar();
+    gStoryClear();
+    gPlay(txt, G_LEVEL[k].n);
+    gStoryBtns([ { label:'开始', fn:function(){ gStoryClear(); gDrawStones(); gTop(); gSay('你先走。落子吧。','normal'); } } ]);
+  },200);
   return true;
 }
 function gomokuStart(k){
