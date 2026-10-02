@@ -3846,6 +3846,7 @@ function itemSell(k){
 }
 function itemUse(k){
   ensureItems();
+  if(foodOf(k)){ foodOpen(k); return; }
   if(isCraft(k)){ craftOpen(k); return; }
   if(k==='五子棋手绘图谱'){
     modalChoose('五子棋手绘图谱',
@@ -3879,6 +3880,7 @@ function itemUse(k){
   const u=ITEM_USE[k];
   const sp=itemSellPrice(k);
   const own=(S.items[k]||0);
+  if(own>0 && MK_EAT[k]) opts.push({ label:'自己吃掉', cb:function(){ mkEatSelf(k); } });
   const opts=[];
   if(u && own>0){
     const give=u.how==='use' ? '给他用' : (u.how==='wear' ? '让他给你戴上' : '送给他');
@@ -4071,7 +4073,7 @@ function bagPaint(sayT){
   }else{
     h+='<div class="bagchips">';
     foodKeys.forEach(function(k){
-      h+='<span class="bagchip">'+k+' ×'+foods[k]+'</span>';
+      h+='<button class="bagchip on" data-k="'+k+'">'+k+' ×'+foods[k]+'</button>';
     });
     h+='</div>';
   }
@@ -6560,7 +6562,50 @@ const MK_TRINKET=[
   { k:'糖画',   p:12, d:'一整条龙，脆的。放着舍不得吃。' },
   { k:'拨浪鼓', p:18, d:'摇起来响。他嫌吵，但没让你放下。' }
 ];
-/* 集市小玩意：能送他（接进背包的点击体系） */
+/* /* 自己吃（2026-10-02）：食物和能吃的玩意，玩家自己也能吃 */
+const MK_EAT={ '糖画':{ mood:8 } };
+
+function foodOf(k){
+  return FOODS.filter(function(f){ return f.k===k; })[0];
+}
+function mkEatSelf(k){
+  ensureItems();
+  if((S.items[k]||0)<1){ toast('没有了。'); return; }
+  S.items[k]--; if(S.items[k]<=0) delete S.items[k];
+  addMood((MK_EAT[k]||{}).mood||6);
+  save(); refresh(); coin();
+  bagPaint();
+  const line={ '糖画':'你咬了一口。糖渣掉在手心，甜得发齁。他还看着，你又咬了一口。' }[k]||'你几口吃完了。';
+  modalChoose('自己吃掉', '（'+line+'）', [ { label:'好', cb:function(){ bagPaint(); } } ]);
+}
+const FOOD_SELF={
+  '小鱼干':'你嚼得脆。他看了你一眼，把自己那份往你这边推了推。',
+  '牛奶':'你一口喝完，杯底磕在桌上。他说：慢点。',
+  '苹果':'你咬着，汁水沾了手指。他把帕子递过来，没抬头。',
+  '热汤':'你喝得急，烫了舌头。他伸手把碗挪开了一点。',
+  '糖葫芦':'你咬掉一颗，糖渣黏在牙上。他笑了一下，很快收回去。',
+  '蛋糕':'你吃得满嘴都是。他递纸，说：出息。'
+};
+function foodEatSelf(k){
+  const f=foodOf(k); if(!f) return;
+  if((S.foods[k]||0)<1){ toast('没有了。'); return; }
+  S.foods[k]--; if(S.foods[k]<=0) delete S.foods[k];
+  addMood(Math.max(2, Math.round((f.mood||2)*0.8)));
+  save(); refresh(); coin();
+  bagPaint();
+  modalChoose('自己吃', '（'+(FOOD_SELF[k]||'你几口吃完了。')+'）',
+    [ { label:'好', cb:function(){} } ]);
+}
+function foodOpen(k){
+  const f=foodOf(k); if(!f) return;
+  if((S.foods[k]||0)<1){ toast('没有了。'); return; }
+  modalChoose(k, '（'+(f.mood>=6?'甜的，你惦记它很久了。':'热的，还冒着气。')
+      +'手里还有 '+S.foods[k]+' 份。）',
+    [ { label:'自己吃', cb:function(){ foodEatSelf(k); } },
+      { label:'喂他', cb:function(){ doFeed(f); bagPaint(); } },
+      { label:'收着', cb:function(){} } ]);
+}
+/*集市小玩意：能送他（接进背包的点击体系） */
 const MK_GIVE={
   '泥人':   { say:'丑。',    nar:'他把泥人翻过来看底座，又摆回案上，正对着自己。' },
   '竹蜻蜓': { say:'这什么。', nar:'他两手一搓，竹蜻蜓飞起来，撞在房梁上。他抬头看了半天，又去捡回来了。' },
