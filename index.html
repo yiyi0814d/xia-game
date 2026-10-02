@@ -1186,6 +1186,29 @@ const NIGHT_POKE=[
 ];
 function isNight(){ var h=new Date().getHours(); return (h>=23||h<5); }
 function nightOn(){ if(document.body) document.body.classList.toggle('night', isNight()); }
+/* —— 每天进门第一句 —— */
+const DAY_HELLO=[
+  '「……站那儿干嘛，进来。」',
+  '「水在桌上，自己倒。」',
+  '「今天风大，窗我关了。」',
+  '「坐。」',
+  '（他抬头看你一眼，又把书翻回前一页。）「……哦。」',
+  '「你回来得正好，这个字我写不好。」',
+  '「手怎么这么凉。」',
+  '「茶凉了，我再沏一壶。」'
+];
+function dailyGreet(){
+  const now=Date.now(), d=new Date();
+  const key=d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+  if(S.dayStamp===key) return;
+  const far = S.lastSeen && (now-S.lastSeen) > 3*86400000;
+  S.dayStamp=key; S.lastSeen=now; save();
+  if(!S.started) return;
+  if(far){ setTimeout(function(){ say('「……哦，你还知道回来。」','夏萧因','normal'); },900); return; }
+  var wd=d.getDay();
+  if(wd===0 || wd===6){ setTimeout(function(){ say('「今天不睡懒觉？」','夏萧因','normal'); },900); return; }
+  setTimeout(function(){ say(pickLine(DAY_HELLO,'dayhi'),'夏萧因','normal'); },900);
+}
 function roomBG(){ return S.newhome?HOME2.live:IMG.room; }
 function sleepBG(){ return S.newhome?HOME2.sleep:IMG.sleep; }
 function moveIn(){
@@ -1207,7 +1230,7 @@ const DEFAULT = {
   playCount:0, gWang:0, gWangFav:0, wangOpen:0, chenOpen:0, zhouOpen:0, wangRoom:0, yardCount:0, shopCount:0, liWang:0, liFav:0, wangLink:0,
   shenWang:0, shenFav:0, shenCalm:0, xyAct:0, xyEnd:0,
   rule:0, lastLove:0, lastPay:0, loveWarn:0, payWarn:0, lastFeed:0, full:0,
-  sick:0, sickDay:0, careN:0, newhome:0, house:0,
+  sick:0, sickDay:0, careN:0, newhome:0, house:0, dayStamp:"", lastSeen:0,
   name:'夫人', mood:70, energy:80, health:80, money:500,
   foods:{}, fish:[], dolls:[],
   pokeCount:0, feedCount:0, bathCount:0,
@@ -1694,6 +1717,7 @@ function renderHome(){
   const _bd=$('bday'); if(_bd) _bd.onclick=function(){ openBday(); };
   xyCheck();
   if(!S.sick && (S.health||0)<=SICK_IN) sickCheck();
+  dailyGreet();
   refresh();
   if(S.asleep) tip('他还在睡。','narr');
   else if(S.sick) tip('夏萧因{今天有点不对劲}，问问怎么了');
