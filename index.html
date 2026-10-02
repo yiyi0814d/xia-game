@@ -1178,11 +1178,16 @@ const HOME2={
 function roomBG(){ return S.newhome?HOME2.live:IMG.room; }
 function sleepBG(){ return S.newhome?HOME2.sleep:IMG.sleep; }
 function moveIn(){
-  S.newhome=1; save();
+  S.newhome=1; S.house=1; save();
   renderHome();
   narrate('（箱子堆在门口。他绕着客厅走了半圈，抬头看灯。）');
   setTimeout(function(){ say('「书架放这边。」','夏萧因','normal'); },1400);
   setTimeout(function(){ say('「灯也换了。以后别老点那盏小的。」','夏萧因','happy'); },3000);
+}
+function moveBack(){
+  S.newhome=0; save(); renderHome();
+  narrate('（箱子又堆回门口。旧屋那盏小灯还亮着。）');
+  setTimeout(function(){ say('「住哪儿都一样。」', '夏萧因', 'normal'); },1500);
 }
 const KEY = 'xxy_save_v1';
 
@@ -1191,7 +1196,7 @@ const DEFAULT = {
   playCount:0, gWang:0, gWangFav:0, wangOpen:0, chenOpen:0, zhouOpen:0, wangRoom:0, yardCount:0, shopCount:0, liWang:0, liFav:0, wangLink:0,
   shenWang:0, shenFav:0, shenCalm:0, xyAct:0, xyEnd:0,
   rule:0, lastLove:0, lastPay:0, loveWarn:0, payWarn:0, lastFeed:0, full:0,
-  sick:0, sickDay:0, careN:0, newhome:0,
+  sick:0, sickDay:0, careN:0, newhome:0, house:0,
   name:'夫人', mood:70, energy:80, health:80, money:500,
   foods:{}, fish:[], dolls:[],
   pokeCount:0, feedCount:0, bathCount:0,
@@ -1658,6 +1663,9 @@ function renderHome(){
   const list = S.asleep
     ? [['去卧室',sleepAct]]
     : [['喂食',feed],['洗澡',bath],['玩耍',play],['睡觉',sleepAct]];
+  if(S.house && !S.asleep){
+    list.unshift(S.newhome?['搬回旧屋',moveBack]:['搬去新家',moveIn]);
+  }
   if(S.sick && !S.asleep){
     list.unshift(['喂药',giveMed],['陪着他',sitWithHim]);
   }
@@ -6408,8 +6416,8 @@ function outShop(sayT){
   h+='<div class="ocard"><div class="ohead">用的</div><div class="olist">';
   SHOP_USE.forEach(function(it){
     const own=(S.items[it.k]||0);
-    if(it.k==='新房' && S.newhome){
-      h+='<div class="orow"><span class="oname">'+it.k+'<em>已经住进去了</em></span><span class="oprice">¥—</span></div>';
+    if(it.k==='新房' && S.house){
+      h+='<div class="orow"><span class="oname">'+it.k+'<em>已经买下了</em></span><span class="oprice">¥—</span></div>';
       return;
     }
     h+='<div class="orow"><span class="oname">'+it.k
@@ -6477,8 +6485,9 @@ function shopBuyUse(k){
   if(S.money<it.p){ bad(); outSay('钱不够。'); return; }
   S.money-=it.p;
   if(k==='新房'){
+    S.house=1;
     save(); refresh(); coin();
-    moveIn();
+    outShop('房子买下了。回家点「搬去新家」就搬。');
     return;
   }
   ensureItems();
