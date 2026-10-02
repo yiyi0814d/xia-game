@@ -3971,6 +3971,14 @@ const G_END_SHEN={
   win:'（他盯着棋盘多看了两秒，才慢慢把子收起来。）<br><br>「这手我没算到。」<br><br>「再来一局，这次我认真。」',
   lose:'（他很快把棋子归了位，抬眼看你。）<br><br>「你的路子我摸清了。」<br><br>「下回别只攻一条线。」'
 };
+const G_END_CHEN={
+  win:'（他捏着子，慢吞吞地一颗一颗放进盒里。）<br><br>「不急着赢，是要紧的。」<br><br>「棋盘平，子正，人也静。明天再来。」',
+  lose:'（他把白子那半盘摆正，抬眼看你。）<br><br>「刚才那手，急了。」<br><br>「不急。坐下歇一会儿，再来。」'
+};
+const G_END_ZHOU={
+  win:'（他一把把棋子拢回去，哗啦一声。）<br><br>「快。」<br><br>「下回别让我等。」',
+  lose:'（他收子收得飞快，头都没抬。）<br><br>「慢了，就是输。」<br><br>「再来，别磨蹭。」'
+};
 function gEndNpc(win, as, d){
   setTimeout(function(){
     gHideChar();
@@ -4012,7 +4020,8 @@ function gEnd(winner){
       return; }
     else if(gLevel==='li'){ gEndNpc(true,'李阿姨',G_END_LI); }
     else if(gLevel==='wang'){ gSay('你赢了。'); gEndWang(true); }
-    else if(gLevel==='chen' || gLevel==='zhou'){ gSay('你赢了。老头咂咂嘴，把棋盘让给你。'); }
+    else if(gLevel==='chen'){ gEndNpc(true,'陈大爷',G_END_CHEN); }
+    else if(gLevel==='zhou'){ gEndNpc(true,'老周',G_END_ZHOU); }
     else { gSay('你赢了。他点点头，把棋盘收了。'); }
   }else{
     if(L.lose){
@@ -4026,7 +4035,8 @@ function gEnd(winner){
       return; }
     else if(gLevel==='li'){ gEndNpc(false,'李阿姨',G_END_LI); }
     else if(gLevel==='wang'){ gSay('他赢了。'); gEndWang(false); }
-    else if(gLevel==='chen' || gLevel==='zhou'){ gSay('他赢了。他把棋子一颗颗收回去。'); }
+    else if(gLevel==='chen'){ gEndNpc(false,'陈大爷',G_END_CHEN); }
+    else if(gLevel==='zhou'){ gEndNpc(false,'老周',G_END_ZHOU); }
     else { gSay('他赢了。'); }
   }
   gTop();
