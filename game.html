@@ -1032,5 +1032,51 @@ setTimeout(function(){
 /* iOS 音频解锁：第一次触摸时悄悄放一条 0 音量音频，把播放权限要下来 */
 (function(){var done=false;function unlock(){if(done)return;done=true;try{var a=new Audio();a.volume=0;a.src=(typeof VOICE!=='undefined'&&VOICE['z01'])?VOICE['z01']:'';if(a.src){var p=a.play();if(p&&p.catch)p.catch(function(){});setTimeout(function(){try{a.pause();}catch(e){}},300);}}catch(e){}}document.addEventListener('touchstart',unlock,{once:true,passive:true});document.addEventListener('click',unlock,{once:true});})();
 </script>
+<script>
+/* 语音播放加固 v2：内联音频转 blob 地址 + 超时兜底，绝不让剧情被音频卡死 */
+(function(){
+  function mkBlob(uri){
+    try{
+      if(!uri || uri.indexOf('data:') !== 0) return uri;
+      var b64 = uri.slice(uri.indexOf(',') + 1);
+      var bin = atob(b64), n = bin.length, arr = new Uint8Array(n);
+      for(var k = 0; k < n; k++) arr[k] = bin.charCodeAt(k);
+      return URL.createObjectURL(new Blob([arr], {type:'audio/mpeg'}));
+    }catch(e){ return uri; }
+  }
+  var vc = {}, bc = {};
+  function voiceSrc(vid){
+    if(vc[vid]) return vc[vid];
+    var u = (typeof VOICE !== 'undefined' && VOICE[vid]) ? VOICE[vid] : ('assets/' + vid + '.mp3');
+    return (vc[vid] = mkBlob(u));
+  }
+  try{
+    if(typeof BGM !== 'undefined'){
+      for(var k in BGM){ if(!bc[k]) bc[k] = mkBlob(BGM[k]); BGM[k] = bc[k]; }
+    }
+  }catch(e){}
+  /* 重写 playVoice：播完就放行；播不出来最多等 2.6 秒也放行 */
+  window.playVoice = function(vid, cb2){
+    stopAudio();
+    playing = true;
+    elVbtn.textContent = '❚❚';
+    var a = new Audio(voiceSrc(vid));
+    audioNow = a;
+    var finned = false, guard = 0;
+    function fin(){
+      if(finned) return;
+      finned = true;
+      if(guard) clearTimeout(guard);
+      playing = false;
+      elVbtn.textContent = '▶';
+      if(cb2) cb2();
+    }
+    guard = setTimeout(fin, 2600);
+    a.onended = fin;
+    a.onerror = fin;
+    try{ a.play().catch(fin); }catch(e){ fin(); }
+  };
+})();
+</script>
 </body>
 </html>
