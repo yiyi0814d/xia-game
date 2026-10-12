@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>相亲记</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:#000}
+
+#stage{
+  position:fixed;inset:0;
+  display:flex;align-items:flex-end;justify-content:center;
+  overflow:hidden;
+}
+
+/* ============ 背景：甜品店室内（纯 CSS 绘制） ============ */
+#bg{position:absolute;inset:0;overflow:hidden}
+
+/* 墙 */
+.bg-wall{
+  position:absolute;left:0;right:0;top:0;height:62%;
+  background:
+    linear-gradient(180deg,#4a3324 0%,#5c4130 40%,#6b4b36 100%);
+}
+/* 木纹 */
+.bg-wall::after{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(
+    90deg,
+    rgba(0,0,0,.10) 0 2px,
+    transparent 2px 46px
+  );
+  opacity:.6;
+}
+/* 墙面光晕 */
+.bg-wall::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 60% 50% at 70% 20%, rgba(255,214,150,.20), transparent 70%);
+}
+/* 地板 */
+.bg-floor{
+  position:absolute;left:0;right:0;bottom:0;height:38%;
+  background:linear-gradient(180deg,#3a2a1e 0%,#2a1e15 100%);
+}
+.bg-floor::after{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(
+    90deg,
+    rgba(255,255,255,.03) 0 1px,
+    transparent 1px 30px
+  );
+}
+
+/* 窗（左） */
+.bg-win{
+  position:absolute;left:6%;top:14%;width:30%;height:38%;
+  background:linear-gradient(160deg,#d9e6ef 0%,#a8c2d4 45%,#8aa8bd 100%);
+  border:6px solid #3a2a1e;
+  border-radius:3px;
+  box-shadow:0 0 40px rgba(200,225,255,.35), inset 0 0 30px rgba(255,255,255,.4);
+}
+.bg-win::after{
+  content:'';position:absolute;inset:0;
+  background:
+    linear-gradient(90deg,transparent 47%,#3a2a1e 47%,#3a2a1e 53%,transparent 53%),
+    linear-gradient(0deg,transparent 47%,#3a2a1e 47%,#3a2a1e 53%,transparent 53%);
+}
+/* 窗外光斜射进来 */
+.bg-beam{
+  position:absolute;left:10%;top:16%;width:60%;height:70%;
+  background:linear-gradient(105deg,rgba(255,235,190,.20),transparent 60%);
+  transform:skewX(-12deg);
+  pointer-events:none;
+}
+
+/* 卡座沙发（背景中位） */
+.bg-booth{
+  position:absolute;left:0;right:0;bottom:34%;height:16%;
+  background:linear-gradient(180deg,#7a3f3f 0%,#5e2f2f 100%);
+  border-top:4px solid #8a4a4a;
+  border-radius:14px 14px 0 0;
+  box-shadow:inset 0 8px 20px rgba(0,0,0,.35);
+}
+.bg-booth::after{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,transparent 0 6%,rgba(0,0,0,.16) 6% 6.4%);
+  border-radius:14px 14px 0 0;
+}
+
+/* 桌子 */
+.bg-table{
+  position:absolute;left:18%;right:18%;bottom:20%;height:5%;
+  background:linear-gradient(180deg,#9a6a42 0%,#7a5230 100%);
+  border-radius:0 0 8px 8px;
+  box-shadow:0 10px 24px rgba(0,0,0,.5);
+}
+/* 桌上的两杯 */
+.bg-cup{
+  position:absolute;bottom:25%;width:34px;height:52px;
+  background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,.18));
+  border:2px solid rgba(255,255,255,.55);
+  border-radius:4px 4px 10px 10px;
+}
+.bg-cup::before{ /* 吸管 */
+  content:'';position:absolute;left:50%;top:-24px;width:3px;height:26px;
+  background:#c94f6d;transform:translateX(-50%) rotate(8deg);border-radius:2px;
+}
+.bg-cup.c1{left:34%}
+.bg-cup.c2{left:52%;bottom:24.6%}
+
+/* 吊灯 */
+.bg-lamp{
+  position:absolute;top:-6%;width:12%;aspect-ratio:1/1.1;
+  background:radial-gradient(circle at 50% 30%,#ffe0a0,#c98a2e);
+  border-radius:50% 50% 42% 42%;
+  box-shadow:0 0 70px rgba(255,200,110,.55),0 0 140px rgba(255,180,80,.25);
+}
+.bg-lamp.l1{left:24%}
+.bg-lamp.l2{right:24%;transform:scale(.92)}
+.bg-lamp::before{
+  content:'';position:absolute;left:50%;top:-90px;width:2px;height:90px;
+  background:rgba(0,0,0,.5);transform:translateX(-50%);
+}
+
+/* 全屏暖光/暗角 */
+#vignette{
+  position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 45%, transparent 40%, rgba(0,0,0,.55) 100%);
+}
+
+/* ============================================================
+   场景二：四轮车车厢内（纯 CSS）
+   ============================================================ */
+#bgCar{position:absolute;inset:0;display:none;overflow:hidden}
+#bgCar.on{display:block}
+#bgShop{position:absolute;inset:0;display:block;overflow:hidden}
+#bgShop.off{display:none}
+
+/* 车厢顶 */
+.car-ceil{
+  position:absolute;left:0;right:0;top:0;height:26%;
+  background:linear-gradient(180deg,#2b2118 0%,#3d2f22 100%);
+  border-bottom:3px solid #1a130d;
+}
+/* 车厢壁 */
+.car-body{
+  position:absolute;left:0;right:0;top:26%;bottom:0;
+  background:linear-gradient(180deg,#4a3a2a 0%,#3a2c1e 55%,#2a2016 100%);
+}
+/* 铁皮纹 */
+.car-body::after{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,transparent 0 40px,rgba(0,0,0,.18) 40px 43px);
+}
+
+/* 后窗（车尾，透光） */
+.car-window{
+  position:absolute;right:4%;top:16%;width:36%;height:34%;
+  background:linear-gradient(150deg,#cfe3ee 0%,#9ab8cb 50%,#7a99ad 100%);
+  border:5px solid #1e1710;border-radius:4px;
+  box-shadow:0 0 34px rgba(190,220,240,.4), inset 0 0 20px rgba(255,255,255,.3);
+  overflow:hidden;
+}
+/* 窗外掠过的树影 */
+.car-window::before{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(
+    90deg,
+    rgba(40,60,35,.55) 0 26px,
+    transparent 26px 58px
+  );
+  animation:drive 1.1s linear infinite;
+}
+@keyframes drive{from{transform:translateX(0)}to{transform:translateX(-58px)}}
+/* 窗框十字 */
+.car-window::after{
+  content:'';position:absolute;inset:0;
+  background:
+    linear-gradient(90deg,transparent 47%,#1e1710 47%,#1e1710 53%,transparent 53%);
+}
+
+/* 前座靠背（画面下部） */
+.car-seat{
+  position:absolute;left:-6%;right:-6%;bottom:0;height:44%;
+  background:linear-gradient(180deg,#6b5a45 0%,#54452f 40%,#3d3122 100%);
+  border-radius:26px 26px 0 0;
+  box-shadow:0 -10px 30px rgba(0,0,0,.55);
+  border-top:5px solid #7d6a52;
+}
+.car-seat::after{
+  content:'';position:absolute;inset:14px 20px 0;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.14) 0 3px,transparent 3px 26px);
+  border-radius:18px 18px 0 0;
+}
+
+/* 窗外斜光 */
+.car-beam{
+  position:absolute;right:0;top:12%;width:70%;height:80%;
+  background:linear-gradient(120deg,rgba(210,230,245,.22),transparent 55%);
+  pointer-events:none;
+}
+/* 颠簸抖动层（作用于立绘） */
+@keyframes shake{
+  0%,100%{transform:translate(0,0) rotate(0)}
+  25%{transform:translate(-2px,1px) rotate(-.3deg)}
+  75%{transform:translate(2px,-1px) rotate(.3deg)}
+}
+
+/* ============ 立绘 ============ */
+.chara{
+  position:absolute;bottom:26%;
+  width:52%;max-width:340px;
+  filter:brightness(.45) saturate(.6);
+  transition:filter .35s, transform .35s;
+  transform-origin:bottom center;
+  pointer-events:none;
+  z-index:5;
+}
+.chara img{
+  display:block;width:100%;height:auto;
+  border-radius:14px;
+  box-shadow:0 18px 50px rgba(0,0,0,.65);
+}
+.chara.left{left:-4%;transform:translateX(-6%) scale(.94)}
+.chara.right{right:-4%;transform:translateX(6%) scale(.94)}
+.chara.on{
+  filter:brightness(1) saturate(1);
+  z-index:8;
+}
+.chara.left.on{transform:translateX(0) scale(1)}
+.chara.right.on{transform:translateX(0) scale(1)}
+
+/* 说话时轻微呼吸 */
+@keyframes breathe{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.chara.on img{animation:breathe 3.2s ease-in-out infinite}
+
+/* ============ 对话框 ============ */
+#dialog{
+  position:absolute;left:0;right:0;bottom:0;z-index:20;
+  padding:0 14px calc(18px + env(safe-area-inset-bottom));
+  cursor:pointer;
+}
+#nameTag{
+  display:inline-block;
+  margin-left:10px;margin-bottom:-9px;position:relative;z-index:2;
+  padding:5px 18px;
+  background:linear-gradient(180deg,#c9a227,#a8841a);
+  color:#1a1408;font-size:13.5px;font-weight:700;letter-spacing:2px;
+  border-radius:8px 8px 0 0;
+  box-shadow:0 -2px 10px rgba(201,162,39,.4);
+}
+#box{
+  position:relative;
+  background:linear-gradient(180deg,rgba(28,22,16,.94),rgba(18,14,10,.96));
+  border:2px solid #6b5730;
+  border-radius:14px;
+  padding:16px 18px 18px;
+  min-height:112px;
+  box-shadow:0 -6px 30px rgba(0,0,0,.7), inset 0 0 40px rgba(201,162,39,.05);
+  backdrop-filter:blur(6px);
+}
+#box::before{ /* 四角描金 */
+  content:'';position:absolute;inset:5px;border:1px solid rgba(201,162,39,.22);
+  border-radius:10px;pointer-events:none;
+}
+#txt{
+  color:#f0e8da;font-size:16px;line-height:1.9;
+  min-height:52px;
+  font-family:-apple-system,"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+}
+#txt.narr{color:#c8bda9;font-style:normal}
+/* 打字光标 */
+#cursor{
+  display:inline-block;width:2px;height:1em;background:#c9a227;
+  vertical-align:-2px;margin-left:2px;
+  animation:blink .8s step-end infinite;
+}
+@keyframes blink{50%{opacity:0}}
+/* 继续箭头 */
+#arrow{
+  position:absolute;right:16px;bottom:10px;
+  color:#c9a227;font-size:15px;
+  animation:bob 1s ease-in-out infinite;
+  opacity:0;transition:opacity .3s;
+}
+#arrow.show{opacity:1}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(4px)}}
+
+/* 语音按钮 */
+#vbtn{
+  position:absolute;right:16px;top:14px;
+  width:34px;height:34px;border-radius:50%;
+  background:rgba(201,162,39,.15);
+  border:1px solid rgba(201,162,39,.5);
+  color:#c9a227;
+  display:none;align-items:center;justify-content:center;
+  font-size:15px;cursor:pointer;
+}
+#vbtn.show{display:flex}
+#vbtn:active{background:rgba(201,162,39,.35)}
+
+/* ============ 选项（屏幕正中，上下堆叠） ============ */
+#choices{
+  position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);
+  z-index:30;padding:0 28px;display:none;
+}
+#choices.show{display:block}
+.cho{
+  display:block;width:100%;
+  margin-bottom:14px;
+  padding:16px 20px;
+  background:linear-gradient(180deg,rgba(40,32,22,.96),rgba(26,20,14,.96));
+  border:1.5px solid #8a6f38;
+  border-radius:12px;
+  color:#f0e8da;font-size:15.5px;line-height:1.6;
+  text-align:left;font-family:inherit;cursor:pointer;
+  box-shadow:0 8px 26px rgba(0,0,0,.6), inset 0 0 24px rgba(201,162,39,.06);
+  transition:.15s;
+}
+.cho:active{
+  border-color:#c9a227;background:linear-gradient(180deg,rgba(60,46,26,.98),rgba(38,28,16,.98));
+  transform:scale(.985);
+}
+.cho .k{color:#c9a227;font-weight:700;margin-right:10px}
+
+/* 居中提示 */
+#centerTip{
+  position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);
+  text-align:center;color:#8a7a5e;font-size:13px;letter-spacing:3px;
+  z-index:25;display:none;
+}
+#centerTip.show{display:block}
+
+/* ============ 顶部标题 ============ */
+#title{
+  position:absolute;top:calc(16px + env(safe-area-inset-top));left:0;right:0;
+  text-align:center;z-index:15;pointer-events:none;
+}
+/* 音乐开关 */
+#muteBtn{
+  position:absolute;
+  top:calc(14px + env(safe-area-inset-top));
+  right:14px;
+  z-index:40;
+  width:38px;height:38px;line-height:38px;
+  text-align:center;border-radius:50%;
+  background:rgba(20,14,10,.55);
+  border:1px solid rgba(255,200,140,.28);
+  color:#ffd9a8;font-size:17px;
+  cursor:pointer;user-select:none;
+  backdrop-filter:blur(4px);
+  -webkit-tap-highlight-color:transparent;
+}
+#muteBtn:active{transform:scale(.92);}
+#title .t{
+  font-size:14px;letter-spacing:6px;color:rgba(201,162,39,.85);
+  text-shadow:0 2px 12px rgba(0,0,0,.9);
+}
+#title .s{
+  font-size:10.5px;letter-spacing:2px;color:rgba(200,190,170,.45);
+  margin-top:4px;
+}
+
+/* 黑场 */
+#fade{
+  position:fixed;inset:0;background:#000;z-index:60;
+  transition:opacity .6s;pointer-events:none;
+}
+
+/* 竖屏提示 */
+@media (orientation:landscape) and (max-height:500px){
+  #stage::after{
+    content:'请竖屏使用';position:absolute;inset:0;z-index:99;
+    display:flex;align-items:center;justify-content:center;
+    background:#000;color:#c9a227;font-size:16px;letter-spacing:4px;
+  }
+}
+</style>
+</head>
+<body>
+
+<div id="stage">
+
+  <!-- ======= 背景 · 甜品店 ======= -->
+  <div id="bgShop">
+    <div class="bg-wall"></div>
+    <div class="bg-win"></div>
+    <div class="bg-beam"></div>
+    <div class="bg-lamp l1"></div>
+    <div class="bg-lamp l2"></div>
+    <div class="bg-booth"></div>
+    <div class="bg-table"></div>
+    <div class="bg-cup c1"></div>
+    <div class="bg-cup c2"></div>
+    <div class="bg-floor"></div>
+  </div>
+
+  <!-- ======= 背景 · 四轮车 ======= -->
+  <div id="bgCar">
+    <div class="car-ceil"></div>
+    <div class="car-body"></div>
+    <div class="car-window"></div>
+    <div class="car-beam"></div>
+    <div class="car-seat"></div>
+  </div>
+
+  <!-- 暗角（常驻最上） -->
+  <div id="vignette"></div>
+
+  <!-- ======= 标题 ======= -->
+  <div id="title">
+    <div class="t">相 亲 记</div>
+    <div class="s">作者喇叭说了算</div>
+    <div class="s" style="font-size:11px;opacity:.55;margin-top:2px" id="verTag">v-FIX-7</div>
+  </div>
+  <!-- ======= 音乐开关 ======= -->
+  <div id="muteBtn" onclick="toggleBgm()">♪</div>
+
+  <!-- ======= 立绘 ======= -->
+  <div class="chara left" id="cZhang"><img src="assets/zhang.jpeg" alt="章均饱"></div>
+  <div class="chara right" id="cXu"><img src="assets/xu.png" alt="徐清风"></div>
+
+  <!-- ======= 对话框 ======= -->
+  <div id="dialog">
+    <div id="nameTag">旁白</div>
+    <div id="box">
+      <div id="txt"></div>
+      <div id="cursor"></div>
+      <div id="vbtn">▶</div>
+      <div id="arrow">▼</div>
+    </div>
+  </div>
+
+  <!-- ======= 选项 ======= -->
+  <div id="choices"></div>
+  <div id="centerTip">请 选 择</div>
+
+</div>
+
+<div id="fade"></div>
+
+<script>
+/* ==========================================================
+   相亲记 · 乙游式脚本
+   格式：{ who:'narr|zhang|xu', text:'...', voice:'zhang01'(可选), show:['zhang'](可选) }
+   ========================================================== */
+var SCRIPT = [
+
+  /* —— 前情 · 任务卡与地震 —— */
+  {who:'narr', text:'这天阳光明媚，温暖的风拂过你的发梢。', scene:'street', clear:true},
+  {who:'narr', text:'这时作者发来一张任务卡——"请1号男嘉宾或one号男嘉宾完成一次约会任务，任务奖励：和1号男嘉宾约会一次"。', scene:'street'},
+  {who:'narr', text:'看完这张任务卡，你的鼻子抽了抽。', scene:'street'},
+  {who:'narr', text:'正当你想大骂作者时，你突然感觉到地震。', scene:'street'},
+  {who:'narr', text:'向左前方望去，一个像大象的人跑过来了。阳光太刺眼，你看不清他的模样。', scene:'street'},
+  {who:'narr', text:'你下意识地想逃走——转头，你就看见了徐清风。', scene:'street', show:['xu'], focus:'xu'},
+  {who:'narr', text:'你还是在原地，没有动。', scene:'street'},
+  {who:'narr', text:'终于，那个像大象的人影跑过来了。你定睛一看——', scene:'street'},
+  {who:'narr', text:'我去，是"章均饱"。', scene:'street', show:['zhang'], focus:'zhang'},
+
+  /* —— 章均饱登场 —— */
+  {who:'narr', text:'章均饱跑过来，吐了把口水在手上，擦在了头发上，一脸自信地看着你。', scene:'street', focus:'zhang'},
+  {who:'zhang', text:'你就是那个，那个女加热是吧？听说你要跟我约会，我就知道。那你们这种女生就喜欢我这种帅的人。我觉得我今天特别像萧炎，唉，你不要爱上我。', voice:'z01', scene:'street'},
+  {who:'narr', text:'你无语地看了他一眼。但出于礼貌，你还是问了一句："你是1号男嘉宾吗？"', scene:'street'},
+  {who:'narr', text:'章均饱听见你的发言，突然从鼻子里喷出一条"黄龙"，接着用食指和大拇指擦去，抹在了裤子上。', scene:'street', focus:'zhang'},
+  {who:'narr', text:'接着，他用低沉气泡音开口——', scene:'street', focus:'zhang'},
+  {who:'zhang', text:'对啊~~~我魅力还是太大了。放心吧，我不会喜欢上你的。', voice:'z02', scene:'street'},
+  {who:'narr', text:'作者实在看不下去了，拿着大喇叭喊：请1号男嘉宾和女加热去往xx甜品店约会。', scene:'street'},
+  {who:'narr', text:'（由于这里离xx甜品店很远，请女加热选择：打车，骑车，或者走路。）', scene:'street'},
+  {choice:[
+    {k:'1', t:'打车', to:'CAR1'},
+    {k:'2', t:'骑车', to:'CAR2'},
+    {k:'3', t:'走路', to:'CAR3'}
+  ]}
+];
+
+/* ============ 出行三条线（独立成表，不进 SCRIPT） ============ */
+var RIDE = {};
+
+/* —— 打车线 —— */
+RIDE.CAR1 = [
+  {who:'narr', text:'你选了打车。', clear:true, scene:'street', show:['zhang'], focus:'zhang'},
+  {who:'narr', text:'章均饱一脸宠溺地看着你，接着拿出他的大哥大，打了一辆车。', scene:'street', focus:'zhang'},
+  {who:'narr', text:'你有些怀疑，但是也没说什么。', scene:'street'},
+  {who:'narr', text:'过了差不多15分钟，你有些不耐烦了，转头问他："车还有多久到？"', scene:'street'},
+  {who:'narr', text:'章均饱意味深长地笑了一下，用手指了指你的后方。', scene:'street', focus:'zhang'},
+  {who:'narr', text:'你转头看去——一辆十分破旧、少了一个轮子的四轮车，破破烂烂地开过来了。', scene:'street'},
+  {who:'narr', text:'你十分震惊，看着他说："这就是你打的车？"', scene:'street'},
+  {who:'narr', text:'章均饱十分自信地拍了拍胸脯——', scene:'street', focus:'zhang'},
+  {who:'zhang', text:'对呀，这个才花2块钱。你看我多顾家~', voice:'z03', scene:'street'},
+  {who:'narr', text:'你非常震惊地听完他说完这句话。（顾家？是人吗？）', scene:'street'},
+  {who:'narr', text:'你十分不情愿地坐上了这辆少一个轮子的四轮车。', scene:'car', show:['zhang']}
+];
+
+/* —— 骑车线 —— */
+RIDE.CAR2 = [
+  {who:'narr', text:'你选了骑车。', clear:true, scene:'street', show:['zhang'], focus:'zhang'},
+  {who:'narr', text:'但车子貌似坏了，无奈你们只好打车。', scene:'street', focus:'zhang'},
+  {who:'narr', text:'章均饱一脸宠溺地看着你，接着拿出他的大哥大，打了一辆车。', scene:'street', focus:'zhang'},
+  {who:'narr', text:'你有些怀疑，但是也没说什么。', scene:'street'},
+  {who:'narr', text:'过了差不多15分钟，你有些不耐烦了，转头问他："车还有多久到？"', scene:'street'},
+  {who:'narr', text:'章均饱意味深长地笑了一下，用手指了指你的后方。', scene:'street', focus:'zhang'},
+  {who:'narr', text:'你转头看去——一辆十分破旧、少了一个轮子的四轮车，破破烂烂地开过来了。', scene:'street'},
+  {who:'narr', text:'你十分震惊，看着他说："这就是你打的车？"', scene:'street'},
+  {who:'narr', text:'章均饱十分自信地拍了拍胸脯——', scene:'street', focus:'zhang'},
+  {who:'zhang', text:'对呀，这个才花2块钱。你看我多顾家~', voice:'z03', scene:'street'},
+  {who:'narr', text:'你非常震惊地听完他说完这句话。（顾家？是人吗？）', scene:'street'},
+  {who:'narr', text:'你十分不情愿地坐上了这辆少一个轮子的四轮车。', scene:'car', show:['zhang']}
+];
+
+/* —— 走路线 —— */
+RIDE.CAR3 = [
+  {who:'narr', text:'你选了走路。', clear:true, scene:'street', show:['zhang'], focus:'zhang'},
+  {who:'narr', text:'但男嘉宾有点心疼你，连车费都不舍得？没关系，哥哥请你。', scene:'street', focus:'zhang'},
+  {who:'narr', text:'最后你们还是打车。', scene:'street'},
+  {who:'narr', text:'章均饱一脸宠溺地看着你，接着拿出他的大哥大，打了一辆车。', scene:'street', focus:'zhang'},
+  {who:'narr', text:'你有些怀疑，但是也没说什么。', scene:'street'},
+  {who:'narr', text:'过了差不多15分钟，你有些不耐烦了，转头问他："车还有多久到？"', scene:'street'},
+  {who:'narr', text:'章均饱意味深长地笑了一下，用手指了指你的后方。', scene:'street', focus:'zhang'},
+  {who:'narr', text:'你转头看去——一辆十分破旧、少了一个轮子的四轮车，破破烂烂地开过来了。', scene:'street'},
+  {who:'narr', text:'你十分震惊，看着他说："这就是你打的车？"', scene:'street'},
+  {who:'narr', text:'章均饱十分自信地拍了拍胸脯——', scene:'street', focus:'zhang'},
+  {who:'zhang', text:'对呀，这个才花2块钱。你看我多顾家~', voice:'z03', scene:'street'},
+{who:'narr', text:'你非常震惊地听完他说完这句话。（顾家？是人吗？）', scene:'street'},
+  {who:'narr', text:'你十分不情愿地坐上了这辆少一个轮子的四轮车。', scene:'car', show:['zhang']}
+];
+/* ============ 车上（所有线共用） ============ */
+var RIDE_AFTER = [
+  {who:'narr', text:'你刚坐上去，那位看着就奔六的老人家，吐了一口浓痰在车后座上。', scene:'car'},
+  {who:'narr', text:'你尖叫着站了起来。', scene:'car'},
+  {who:'narr', text:'那个老人家转过来看了一眼："妹妹仔，不好意思，黑到你了。"', scene:'car'},
+  {who:'narr', text:'接着你看着他，把手伸过来，用袖子把那一口浓痰敷掉了。', scene:'car'},
+  {who:'narr', text:'章均饱看着一点也不在意，一屁股坐在那吐浓痰的位置上。', scene:'car', focus:'zhang'},
+  {who:'narr', text:'你有点想吐了。不过你看车上——斜前方的徐清风，还是不情愿地往那个座位上垫了20张纸才坐下。', scene:'car', show:['xu'], focus:'xu'},
+  {who:'narr', text:'这一路上十分颠簸。', scene:'car'},
+  {who:'narr', text:'待马上到达甜品店的时候，你用余光撇到章均饱，似乎在抠鼻屎，而且马上要把手伸进嘴巴里了。', scene:'car', focus:'zhang'},
+  {who:'narr', text:'你转过去说："你在吃鼻屎？"', scene:'car'},
+  {who:'narr', text:'他非常自然地，把手伸进嘴巴里面，用牙齿把手上的鼻屎啃掉，然后再跟你说——', scene:'car', focus:'zhang'},
+  {who:'zhang', text:'对呀，你没吃过鼻屎吗？', voice:'z04', scene:'car'},
+  {who:'narr', text:'你尴尬地摇了摇头："没吃过，不好意思。"', scene:'car'},
+  {who:'narr', text:'章均饱轻笑了一下，又把他的食指伸进鼻孔里面，抠了好大一坨鼻屎出来，鼻涕还拉丝。', scene:'car', focus:'zhang'},
+  {who:'narr', text:'然后递到你面前——', scene:'car', focus:'zhang'},
+  {who:'zhang', text:'小妹妹，长这么大还没吃过鼻屎来，哥哥给你吃一口。', voice:'z05', scene:'car'},
+  {who:'narr', text:'你看到这一幕，你选择——', scene:'car'},
+  {choice:[
+    {k:'1', t:'吐一口唾沫在他手上', to:'NASAL1'},
+    {k:'2', t:'礼貌婉拒', to:'NASAL2'},
+    {k:'3', t:'惊叫一声', to:'NASAL3'}
+  ]}
+];
+
+/* ============ 鼻屎三条线 ============ */
+var NASAL = {};
+
+/* —— 选项1 · 吐一口唾沫 —— */
+NASAL.NASAL1 = [
+  {who:'narr', text:'你吐了一口唾沫在他手上。', clear:true, scene:'car', show:['zhang'], focus:'zhang'},
+  {who:'narr', text:'章均饱低头看了看手心那一小滩，愣了两秒。', scene:'car', focus:'zhang'},
+  {who:'narr', text:'然后他把手往自己脸上一抹，连带着那坨鼻屎一起，全抹进了嘴里。', scene:'car', focus:'zhang'},
+  {who:'zhang', text:'哦——这个味儿，比鼻屎冲。', voice:'z06', scene:'car'},
+  {who:'narr', text:'你胃里翻了一下。', scene:'car'},
+  {who:'narr', text:'前面的老头子从后视镜里看了一眼，把车速提了一档，一句话没说。', scene:'car'},
+  {who:'narr', text:'他这一抹，倒是把鼻屎和鼻涕都收干净了，坐垫上一点没脏。', scene:'car'}
+];
+
+/* —— 选项2 · 礼貌婉拒 —— */
+NASAL.NASAL2 = [
+  {who:'narr', text:'你礼貌地婉拒了。', clear:true, scene:'car', show:['zhang'], focus:'zhang'},
+  {who:'narr', text:'你说："不用了，谢谢，我不吃这个。"', scene:'car'},
+  {who:'narr', text:'章均饱的手举在半空中，举了足有五秒。', scene:'car', focus:'zhang'},
+  {who:'zhang', text:'……哦。', voice:'z07', scene:'car'},
+  {who:'narr', text:'他把手收回去，用食指和大拇指捏着那坨东西，随手抹在了自己裤腿上。', scene:'car', focus:'zhang'},
+  {who:'narr', text:'然后他一脸惋惜地看着你——', scene:'car', focus:'zhang'},
+  {who:'zhang', text:'那你亏了。我这个是精华的。', voice:'z08', scene:'car'},
+  {who:'narr', text:'你非常想问一句：精华在哪。但你忍住了。', scene:'car'}
+];
+
+/* —— 选项3 · 惊叫一声（原文） —— */
+NASAL.NASAL3 = [
+  {who:'narr', text:'你选了一声惊叫。', clear:true, scene:'car', show:['zhang'], focus:'zhang'},
+  {who:'narr', text:'章均饱听到了你的一声尖叫，吓了一跳。', scene:'car', focus:'zhang'},
+  {who:'narr', text:'他手一抖，把带鼻涕的鼻屎掉在了后座的坐垫上。', scene:'car'},
+  {who:'narr', text:'前面那位老头子看到了，立马说——', scene:'car'},
+  {who:'narr', text:'"年轻人不要乱弄哦，我这个坐垫以后是要载人的，不要搞脏了。"', scene:'car'},
+  {who:'narr', text:'你听到了前面这个老头子的话，顿时尴尬得脸红了。', scene:'car'},
+  {who:'narr', text:'章均饱看到你这个样子，用手抠了抠头——', scene:'car', focus:'zhang'},
+  {who:'zhang', text:'其实你脸红的时候，还挺美的。', voice:'z09', scene:'car'},
+  {who:'narr', text:'你非常震惊，正想反驳他——', scene:'car'}
+];
+/* ============ 下车进店（所有线共用） ============ */
+var ARRIVE = [
+  {who:'narr', text:'前面的老头子忽然说："到站了，你们可以下车了。"', clear:true, scene:'car'},
+  {who:'narr', text:'你心想终于可以逃走了，于是立马从三轮车的后座跳下来，逃也似地冲向了xx甜品店。', scene:'shop'},
+  {who:'narr', text:'章均饱像个霸王龙一样跟上来。', scene:'shop', show:['zhang'], focus:'zhang'},
+  {who:'zhang', text:'妹子——你跑什么呀，我跟你说，我今天还特意洗了头。', voice:'z10', scene:'shop'},
+  {who:'narr', text:'你回头一看，他头发上确实是湿的，还往下滴着水——就是刚吐口水擦的那块。', scene:'shop', focus:'zhang'},
+
+  /* —— 进店后的选择 —— */
+  {who:'narr', text:'甜品店的门在你身后合上，空调的凉气扑在脸上。', scene:'shop'},
+  {who:'narr', text:'章均饱站在门口，把那张鱼网似的脸冲着店里扫了一圈，忽然抬手指了个方向。', scene:'shop', focus:'zhang'},
+  {who:'zhang', text:'那边，靠窗那个位置。我先坐下了啊。', voice:'z11', scene:'shop'},
+  {who:'narr', text:'他大步流星地走过去，一屁股坐进沙发卡座，还把两只胳膊摊开，占了大半个位置。', scene:'shop', focus:'zhang'},
+  {who:'narr', text:'你还没走过去呢，玻璃门又被推开了——徐清风进来了。', scene:'shop', show:['xu'], focus:'xu'},
+  {who:'narr', text:'他站在门口扫了一圈，目光落在你身上，又落到章均饱那摊开的胳膊上。', scene:'shop', focus:'xu'},
+  {who:'zhang', text:'你、你怎么也来了？', voice:'z12', scene:'shop'},
+  {who:'narr', text:'那人没看他，先在你对面坐下，手往桌上一搁，指节上还有没洗净的土。', scene:'shop', focus:'xu'},
+  {who:'narr', text:'他看你两秒，开口八个字——', scene:'shop', focus:'xu'},
+  {who:'xu', text:'坐下吧。我送你回去。', scene:'shop'},
+  {who:'narr', text:'你看了看窗边那个摊着胳膊的章均饱，又看了看对面这个刚坐下的人。', scene:'shop'},
+
+  /* —— 第一章 · 服务员来了 —— */
+  {who:'narr', text:'——第一章 · 服务员来了——', scene:'shop', clear:true, show:['zhang','xu'], focus:'zhang'},
+  {who:'narr', text:'服务员拿着菜单过来，先看了章均饱一眼，又看了徐清风一眼，最后把菜单递给了你。', scene:'shop'},
+  {who:'narr', text:'章均饱不等你伸手，一把把菜单抽过去，翻开第一页，眉头就皱了起来。', scene:'shop', focus:'zhang'},
+  {who:'zhang', text:'——这一杯够我吃三碗粉。', voice:'z13', scene:'shop'},
+  {who:'narr', text:'他把菜单翻回去又翻过来，反复三次，最后停在草莓那页，眼睛一眯。', scene:'shop', focus:'zhang'},
+  {who:'zhang', text:'就这个。要两杯。', voice:'z14', scene:'shop'},
+  {who:'narr', text:'"你不是嫌贵？"', scene:'shop'},
+  {who:'narr', text:'章均饱把胸脯一拍，用力得胸前那件 T 恤抖了一下。', scene:'shop', focus:'zhang'},
+  {who:'zhang', text:'我给自己省，给妹子怎么能省。', voice:'z15', scene:'shop'},
+  {who:'narr', text:'服务员问甜度，他一拍桌子——', scene:'shop', focus:'zhang'},
+  {who:'zhang', text:'全糖！甜！甜到齁！', voice:'z16', scene:'shop'},
+  {who:'narr', text:'你提醒他，"齁"是难受的意思。', scene:'shop'},
+  {who:'narr', text:'他愣了半秒，改口："那甜的甜的，不要齁的。"', scene:'shop', focus:'zhang'},
+  {who:'narr', text:'服务员看了他一眼，又看了你一眼，把单子记下了。', scene:'shop'},
+
+  /* —— 第二章 · 糖水上桌 —— */
+  {who:'narr', text:'——第二章 · 糖水上桌——', scene:'shop'},
+  {who:'narr', text:'两杯东西端上来，他那杯顶上压着一坨淡粉色的奶油。', scene:'shop'},
+  {who:'narr', text:'章均饱先掏出一张折了三道的纸巾，把杯沿认认真真擦了一圈，那认真劲儿像在做什么了不得的大事。', scene:'shop', focus:'zhang'},
+  {who:'narr', text:'然后"噗"一声把吸管插进去，扎得太用力，奶油直接溅了出来，糊了他那层鱼网纹一脸。', scene:'shop'},
+  {who:'narr', text:'他不擦。', scene:'shop'},
+  {who:'narr', text:'他就那么顶着一脸奶白，抬眼看你，表情还挺正经。', scene:'shop', focus:'zhang'},
+  {who:'zhang', text:'妹子，你怎么不喝？', voice:'z17', scene:'shop'},
+  {who:'narr', text:'你低头喝自己的。他盯着你看了两秒。', scene:'shop'},
+  {who:'zhang', text:'是不是觉得我这个样子，特有魅力？', voice:'z18', scene:'shop'},
+  {who:'narr', text:'你非常想问一句：魅力在哪。但你忍住了。', scene:'shop'},
+  {who:'narr', text:'旁边那位从头到尾没动过杯子，只把两只手搁在桌沿上，指节粗得很。', scene:'shop', focus:'xu'},
+
+  /* —— 第三章 · 作者插话 —— */
+  {who:'narr', text:'——第三章 · 作者插话——', scene:'shop'},
+  {who:'narr', text:'就在章均饱准备把那一脸奶油舔干净的时候，天花板上那个大喇叭"滋啦"响了一声。', scene:'shop'},
+  {who:'narr', text:'作者的声音在店里回荡起来："——截至目前，1号男嘉宾已成功完成点单、就座、并主动发起对话。约会进度：13%。"', scene:'shop'},
+  {who:'narr', text:'章均饱含着一嘴奶油，仰头对着喇叭喊了一嗓子。', scene:'shop', focus:'zhang'},
+  {who:'zhang', text:'十三？怎么就十三？我给妹子花钱了啊！', voice:'z19', scene:'shop'},
+  {who:'narr', text:'喇叭没回他。', scene:'shop'},
+  {who:'narr', text:'对面那位放下了杯子，第一次开口，声音很低。', scene:'shop', focus:'xu'},
+  {who:'xu', text:'劝你别跟喇叭一般见识。', scene:'shop'},
+
+  /* —— 第四章 · 一道疤 —— */
+  {who:'narr', text:'——第四章 · 一道疤——', scene:'shop'},
+  {who:'narr', text:'你看清了徐清风脸上那两道疤——不是一天两天的事，边缘发白，从眉骨斜下去，到颧骨收住。', scene:'shop', focus:'xu'},
+  {who:'narr', text:'你鬼使神差地就把话说出了口。', scene:'shop'},
+  {who:'narr', text:'"你脸是怎么弄的？"', scene:'shop'},
+  {who:'narr', text:'他手在桌上动了动，像是想摸一下脸，又收回去了。', scene:'shop', focus:'xu'},
+  {who:'xu', text:'工地上掉的。砸下来了。', scene:'shop'},
+  {who:'narr', text:'"疼吗。"', scene:'shop'},
+  {who:'narr', text:'他沉默了一下。旁边章均饱忽然插进来，一边说话一边用手指抠着嘴边那圈奶油。', scene:'shop', focus:'zhang'},
+  {who:'zhang', text:'他这人就这样，说不出好听话。', voice:'z20', scene:'shop'},
+  {who:'xu', text:'当时不疼。后来照镜子才疼。', scene:'shop'},
+  {who:'narr', text:'你回头看了一眼章均饱那张顶着一脸奶油、还在冲你挤眼的脸。', scene:'shop', focus:'zhang'},
+  {who:'narr', text:'心想这位虽然丑得没边，倒是个实在人。', scene:'shop'},
+
+  /* —— 第五章 · 你选哪个 —— */
+  {who:'narr', text:'——第五章 · 你选哪个——', scene:'shop'},
+  {who:'narr', text:'你手边的杯子里还剩半杯。', scene:'shop'},
+  {who:'narr', text:'章均饱坐你左边，一边冲你挤眼，一边在桌下伸出食指偷偷戳你大腿。对面那位手就那么搭在桌上，等你说话。', scene:'shop'},
+  {who:'narr', text:'这时候天花板上的喇叭又"滋啦"响了一声。', scene:'shop'},
+  {who:'narr', text:'作者说："——请女加热选择。"', scene:'shop'},
+  {choice:[
+    {k:'1', t:'把剩的半杯推给章均饱，让他自己喝', to:'A'},
+    {k:'2', t:'站起来，跟徐清风走', to:'B'},
+    {k:'3', t:'把杯子放下，问徐清风："你脸怎么弄的？"', to:'C'}
+  ]}
+];
+
+/* —— 三个分支 —— */
+var BRANCH = {
+  A:[
+    {who:'narr', text:'你选了 1。', clear:true, scene:'shop'},
+    {who:'narr', text:'他接过杯子，一口气干了，打了个响亮的嗝，还把自己那层脸拍得啪啪响。', scene:'shop', focus:'zhang'},
+    {who:'zhang', text:'看见没，我不嫌弃你的。', voice:'z21', scene:'shop'},
+    {who:'narr', text:'对面那位没笑，也没说话，只把手从桌上收回去，放在膝盖上。', scene:'shop', focus:'xu'},
+    {who:'narr', text:'你看着他手背上那道旧划痕，忽然想问一句："你脸是怎么弄的？"', scene:'shop', focus:'xu'},
+    {who:'narr', text:'他顿了一下，像在算该不该答。最后他说：', scene:'shop', focus:'xu'},
+    {who:'xu', text:'工地上掉的。砸下来了。', scene:'shop'},
+    {who:'narr', text:'"疼吗。"', scene:'shop', focus:'xu'},
+    {who:'xu', text:'当时不疼。后来照镜子才疼。', scene:'shop'},
+    {who:'zhang', text:'他这个人就这样，说不出好听话。', scene:'shop'},
+    {who:'narr', text:'你回头看章均饱那张顶着一脸奶油的脸，忽然觉得，这位虽然丑得没边，倒是个实在人。', scene:'shop', focus:'zhang'},
+    {who:'narr', text:'【完】', clear:true, scene:'end'}
+  ],
+  B:[
+    {who:'narr', text:'你选了 2。', clear:true, scene:'shop'},
+    {who:'narr', text:'你把杯子往桌上一搁，站起来。章均饱"哎"了一声，手还悬在半空，那根偷偷戳你的食指来不及收。', scene:'shop', focus:'zhang'},
+    {who:'zhang', text:'哎哎哎……那我这杯呢？', voice:'z22', scene:'shop'},
+    {who:'narr', text:'徐清风先一步站起来，把你的椅子往后带了半寸，等你走。', scene:'shop', focus:'xu'},
+    {who:'narr', text:'出门时他顺手把那杯没喝完的推到边上，免得你碰倒。', scene:'shop', focus:'xu'},
+    {who:'narr', text:'街上太阳很大。他走在你左边，一直不说话，走了一整条街才开口。', scene:'street', show:['xu'], focus:'xu'},
+    {who:'xu', text:'下次别让他约你。这个人黏，甩不掉。', scene:'street'},
+    {who:'narr', text:'"你认识他？"', scene:'street'},
+    {who:'xu', text:'认识。他是我工地上搬砖的。', scene:'street'},
+    {who:'narr', text:'【完】', clear:true, scene:'end'}
+  ],
+  C:[
+    {who:'narr', text:'你选了 3。', clear:true, scene:'shop'},
+    {who:'narr', text:'徐清风的手停在桌上，动了动，像是想摸脸，又放回去了。', scene:'shop', focus:'xu'},
+    {who:'narr', text:'他看你一眼，眼神里那点横劲儿退了些。', scene:'shop', focus:'xu'},
+    {who:'xu', text:'工地上掉的架子。砸的。', scene:'shop'},
+    {who:'narr', text:'"那你怎么不让它好好长？"', scene:'shop'},
+    {who:'xu', text:'长好了，就得回去干活。留着这个，能多说两天。', scene:'shop'},
+    {who:'narr', text:'章均饱在边上把奶油舔干净了，插嘴："他这人就整这套，苦。你别搭理。"', scene:'shop'},
+    {who:'narr', text:'徐清风没跟他吵，只把袖子往下拉了拉，盖住了手背上那道划痕。', scene:'shop', focus:'xu'},
+    {who:'narr', text:'【完】', clear:true, scene:'end'}
+  ]
+};
+
+/* ==========================================================
+   引擎
+   ========================================================== */
+var elTxt   = document.getElementById('txt');
+var elTag   = document.getElementById('nameTag');
+var elArrow = document.getElementById('arrow');
+var elVbtn  = document.getElementById('vbtn');
+var elDlg   = document.getElementById('dialog');
+var elChoi  = document.getElementById('choices');
+var elTip   = document.getElementById('centerTip');
+var elZhang = document.getElementById('cZhang');
+var elXu    = document.getElementById('cXu');
+
+var queue = [];       // 当前脚本
+var qi = 0;           // 指针
+var typing = false;   // 正在打字
+var typeTimer = null;
+var fullText = '';
+var curVoice = null;
+var audioNow = null;
+var playing = false;    // 语音正在播
+var lineDone = false;   // 本句是否可以推进
+var shown = {};       // 已亮过的立绘
+var curScene = null;  // 当前场景
+
+var elShop = document.getElementById('bgShop');
+var elCar  = document.getElementById('bgCar');
+
+/* 切场景（带黑场过渡） */
+function setScene(s, cb){
+  if(!s || s === curScene){ if(cb) cb(); return; }
+  var changed = (curScene !== null);
+  curScene = s;
+  playBgm(s);                        // 场景换 → 音乐跟着换
+  var fade = document.getElementById('fade');
+  if(changed){
+    fade.style.transition = 'opacity .28s';
+    fade.style.opacity = '1';
+    setTimeout(function(){
+applyScene(s);
+      fade.style.opacity = '0';
+      if(cb) cb();
+    }, 300);
+  } else {
+    applyScene(s);
+    if(cb) cb();
+  }
+}
+
+/* ============ 背景音乐 ============ */
+var bgmNow = null;
+var bgmSrc = null;
+var BGM = {
+  street: 'assets/bgm_street.mp3',
+  car:    'assets/bgm_car.mp3',
+  shop:   'assets/bgm_shop.mp3',
+  end:    'assets/bgm_end.mp3'
+};
+var bgmMuted = false;
+var bgmStarted = false;   // 浏览器要求先有一次用户操作才能播
+
+function playBgm(s){
+  var src = BGM[s];
+  if(!src || bgmSrc === src) return;   // 同一场景不重头播
+  bgmSrc = src;
+  bgmStarted = true;
+  if(bgmNow){ try{ bgmNow.pause(); }catch(e){} }
+  bgmNow = new Audio(src);
+  bgmNow.loop = true;
+  bgmNow.volume = 0.32;                // 压低，不抢台词
+  bgmNow.play().catch(function(){ /* 首次被拦就等下一次点击 */ });
+}
+
+/* 用户第一次点屏幕时，把音乐补上（浏览器自动播放限制） */
+document.addEventListener('click', function(){
+  if(bgmNow && bgmNow.paused && !bgmMuted){
+    bgmNow.play().catch(function(){});
+  }
+}, { once:false });
+
+/* 右上角静音按钮 */
+function toggleBgm(){
+  bgmMuted = !bgmMuted;
+  if(bgmNow){
+    if(bgmMuted) bgmNow.pause();
+    else bgmNow.play().catch(function(){});
+  }
+  var b = document.getElementById('muteBtn');
+  if(b) b.textContent = bgmMuted ? '♪̸' : '♪';
+}
+function applyScene(s){
+  if(s === 'car'){
+    elCar.classList.add('on');
+    elShop.classList.add('off');
+  } else {
+    elCar.classList.remove('on');
+    elShop.classList.remove('off');
+  }
+}
+
+/* 立绘控制 —— 谁在场谁就在，但只有当前说话的那个亮 */
+function setChara(cfg){
+  /* 1. 先按 show 把该在场的人放出来（出场了就一直在场） */
+  if(cfg && cfg.show){
+    cfg.show.forEach(function(w){
+      shown[w] = true;
+      if(w === 'zhang') elZhang.style.display = 'block';
+      if(w === 'xu')    elXu.style.display    = 'block';
+    });
+  }
+
+  /* 2. 谁在说话，谁就是唯一亮着的；旁白可用 focus 指定亮谁 */
+  var who = (cfg && cfg.who) ? cfg.who : 'narr';
+  var zhangOn = (who === 'zhang') || (cfg && cfg.focus === 'zhang');
+  var xuOn    = (who === 'xu')    || (cfg && cfg.focus === 'xu');
+
+  elZhang.classList.toggle('on', zhangOn);
+  elXu.classList.toggle('on',    xuOn);
+
+  /* 4. 已经不在场的（没 show 过的）继续藏着 */
+  if(!shown.zhang) elZhang.style.display = 'none';
+  if(!shown.xu)    elXu.style.display    = 'none';
+}
+
+/* 打字机 */
+function typeIn(text, done){
+  typing = true;
+  lineDone = false;
+  fullText = text;
+  elTxt.textContent = '';
+  elArrow.classList.remove('show');
+  elVbtn.classList.remove('show');
+  var i = 0;
+  var speed = 34;  // 每字毫秒
+  function step(){
+    if(i >= text.length){
+      typing = false;
+      /* 打完字 → 若有语音，自动播 */
+      if(curVoice){
+        elVbtn.classList.add('show');
+        playVoice(curVoice, function(){
+          lineDone = true;
+          elArrow.classList.add('show');
+        });
+      } else {
+        lineDone = true;
+        elArrow.classList.add('show');
+      }
+      if(done) done();
+      return;
+    }
+    /* 一次吐1~2个字，中文更自然 */
+    var n = (Math.random() < .35) ? 2 : 1;
+    elTxt.textContent += text.substr(i, n);
+    i += n;
+    typeTimer = setTimeout(step, speed);
+  }
+  step();
+}
+
+/* 直接显示全文（跳过打字）—— 跳完照样播语音 */
+function skipType(){
+  if(typeTimer) clearTimeout(typeTimer);
+  typing = false;
+  elTxt.textContent = fullText;
+  if(curVoice){
+    elVbtn.classList.add('show');
+    playVoice(curVoice, function(){
+      lineDone = true;
+      elArrow.classList.add('show');
+    });
+  } else {
+    lineDone = true;
+    elArrow.classList.add('show');
+  }
+}
+
+/* 下一句 */
+function next(){
+  if(qi >= queue.length) return;
+  stopAudio();                 // 上一句的语音先掐掉
+  var cfg = queue[qi++];
+
+  /* 先切场景，切完再演这句 */
+  if(cfg.scene && cfg.scene !== curScene){
+    setScene(cfg.scene, function(){ playLine(cfg); });
+    return;
+  }
+  playLine(cfg);
+}
+
+/* 演一句 */
+function playLine(cfg){
+  setChara(cfg);
+  curVoice = cfg.voice || null;
+
+  /* 名字标签 */
+  if(cfg.who === 'zhang'){
+    elTag.textContent = '章均饱';
+    elTag.style.display = '';
+    elTxt.className = '';
+  } else if(cfg.who === 'xu'){
+    elTag.textContent = '徐清风';
+    elTag.style.display = '';
+    elTxt.className = '';
+  } else {
+    elTag.style.display = 'none';
+    elTxt.className = 'narr';
+  }
+
+  /* 选择支 */
+  if(cfg.choice){
+    showChoices(cfg.choice);
+    return;
+  }
+  typeIn(cfg.text);
+}
+
+/* 选项 —— 点完从对应的表里取内容，接在队列后面 */
+function showChoices(list){
+  stopAudio();
+  lineDone = false;
+  elChoi.innerHTML = '';
+  list.forEach(function(o){
+    var b = document.createElement('button');
+    b.className = 'cho';
+    b.innerHTML = '<span class="k">' + o.k + '</span>' + o.t;
+    b.onclick = function(ev){
+      ev.stopPropagation();
+      ev.preventDefault();
+      lockUntil = Date.now() + 400;
+      elChoi.classList.remove('show');
+      elTip.classList.remove('show');
+
+      /* 取这一支的内容：RIDE / NASAL 用直查，A/B/C 用 BRANCH */
+      var seg = (RIDE[o.to] || NASAL[o.to] || BRANCH[o.to] || []);
+      queue = queue.concat(seg);
+
+      /* 出行线走完 → 接车上；鼻屎线走完 → 接下车进店 */
+      if(RIDE[o.to])       queue = queue.concat(RIDE_AFTER);
+      else if(NASAL[o.to]) queue = queue.concat(ARRIVE);
+
+      next();
+    };
+    elChoi.appendChild(b);
+  });
+  elChoi.classList.add('show');
+  elTip.classList.add('show');
+  elArrow.classList.remove('show');
+  elVbtn.classList.remove('show');
+  elTxt.textContent = '...';
+}
+
+/* ============ 音频 ============ */
+
+function stopAudio(){
+  if(audioNow){ audioNow.pause(); audioNow = null; }
+  playing = false;
+  elVbtn.textContent = '▶';
+}
+
+function playVoice(vid, cb){
+  stopAudio();
+  playing = true;
+  elVbtn.textContent = '❚❚';
+  var a = new Audio('assets/' + vid + '.mp3');
+  audioNow = a;
+  function fin(){
+    playing = false;
+    elVbtn.textContent = '▶';
+    if(cb) cb();
+  }
+  a.onended = fin;
+  a.onerror = fin;
+  a.play().catch(fin);
+}
+
+/* 打完整句 + 语音播完 之前，不能点下一句 */
+
+/* 点对话框推进 */
+var lockUntil = 0;   // 刚点完选项的短暂锁定（防冒泡误推）
+elDlg.addEventListener('click', function(){
+  if(Date.now() < lockUntil) return;             // 选项刚点完 → 忽略这次冒泡
+  if(elChoi.classList.contains('show')) return;  // 选择时锁住
+  if(typing){ skipType(); return; }              // 正在打字 → 先跳完字
+  if(playing) return;                            // 语音还在播 → 锁住
+  if(!lineDone) return;
+  next();
+});
+
+/* 手动重播（右上角 ▶） */
+elVbtn.addEventListener('click', function(ev){
+  ev.stopPropagation();
+  if(!curVoice) return;
+  if(playing){ stopAudio(); lineDone = true; elArrow.classList.add('show'); return; }
+  playVoice(curVoice);
+});
+
+/* 开场 */
+setTimeout(function(){
+  document.getElementById('fade').style.opacity = '0';
+  /* 立绘一开始都站着（压暗），谁说话谁亮 */
+  elZhang.style.display = 'block';
+  elXu.style.display = 'block';
+  elShop.classList.remove('off');
+  elCar.classList.remove('on');
+  queue = SCRIPT.slice();
+  qi = 0;
+  next();
+}, 400);
+</script>
+<script>
+/* iOS 音频解锁：第一次触摸时用 0 音量放一条音频，把播放权限要下来 */
+(function(){var done=false;function unlock(){if(done)return;done=true;try{var a=new Audio('assets/z01.mp3');a.volume=0;var p=a.play();if(p&&p.catch)p.catch(function(){});setTimeout(function(){try{a.pause();}catch(e){}},400);}catch(e){}}document.addEventListener('touchstart',unlock,{once:true,passive:true});document.addEventListener('click',unlock,{once:true});})();
+</script>
+</body>
+</html>
