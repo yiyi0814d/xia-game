@@ -377,6 +377,64 @@ html,body{height:100%;overflow:hidden;background:#000}
     background:#000;color:#c9a227;font-size:16px;letter-spacing:4px;
   }
 }
+
+/* ================= 开场页 ================= */
+#intro{
+  position:fixed;inset:0;z-index:80;background:#f7f4ef;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:30px 22px;text-align:center;transition:opacity .35s;
+}
+#intro.hide{opacity:0;pointer-events:none}
+#intro .en{font-family:Georgia,"Times New Roman",serif;color:#2b2b2b;
+  font-size:13.5px;line-height:1.9;max-width:540px}
+#intro .en h1{font-size:19px;letter-spacing:5px;margin-bottom:16px;
+  font-weight:400;color:#8a1f2b}
+#intro .en p{margin:10px 0}
+#intro .tiny{margin-top:30px;font-size:11px;letter-spacing:3px;color:#9a9490;
+  animation:blink 1.9s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:.9}}
+
+/* ================= 版权页 ================= */
+#notice{
+  position:fixed;inset:0;z-index:85;background:#0d0d0f;color:#cfc9bf;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  padding:30px 24px;text-align:center;
+}
+#notice.show{display:flex}
+#notice h2{font-size:15px;letter-spacing:6px;color:#c9a227;margin-bottom:20px;font-weight:400}
+#notice .body{font-size:12.5px;line-height:2.1;max-width:470px;color:#a9a29a}
+#notice .line{width:54px;height:1px;background:rgba(201,162,39,.5);margin:20px auto}
+#notice .warn{color:#c05050;font-size:12.5px;letter-spacing:2px;line-height:2}
+#notice .go{margin-top:32px;padding:11px 42px;border:1px solid #c9a227;
+  color:#e8d9a0;border-radius:2px;font-size:14px;letter-spacing:6px;background:transparent}
+#notice .go:active{background:rgba(201,162,39,.18)}
+
+/* ================= 结局特效 ================= */
+#fx{position:fixed;inset:0;z-index:70;display:none;overflow:hidden;background:#000}
+#fx.show{display:block}
+#fx .layer{position:absolute;inset:0}
+#fx .ph{position:absolute;background-image:url('assets/zhang.jpeg');
+  background-size:cover;background-position:center}
+#fx.a .ph{inset:0;width:100%;height:100%;opacity:.6;
+  filter:contrast(1.12) saturate(1.1)}
+#fx.a::after{content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 45%,transparent 22%,rgba(0,0,0,.85) 100%)}
+#fx.b .ph{border:2px solid rgba(255,255,255,.14);box-shadow:0 10px 34px rgba(0,0,0,.75)}
+#fx.b::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.42)}
+#fx .red{position:absolute;color:#e00b1e;font-weight:700;white-space:nowrap;opacity:0;
+  text-shadow:0 0 12px rgba(224,11,30,.9),0 0 34px rgba(224,11,30,.5);
+  animation:redIn .85s ease forwards}
+@keyframes redIn{from{opacity:0;transform:scale(.8)}to{opacity:.93;transform:scale(1)}}
+#fx .red.flick{animation:redIn .85s ease forwards,flick 2.4s ease-in-out infinite 1s}
+@keyframes flick{0%,100%{opacity:.93}45%{opacity:.38}58%{opacity:.95}}
+
+/* ================= 重新开始 ================= */
+#replay{position:fixed;left:50%;bottom:9%;transform:translateX(-50%);z-index:92;
+  display:none;padding:11px 36px;border:1px solid rgba(201,162,39,.75);
+  color:#e8d9a0;background:rgba(0,0,0,.6);border-radius:2px;
+  font-size:13.5px;letter-spacing:5px}
+#replay.show{display:block}
+#replay:active{background:rgba(201,162,39,.25)}
 </style>
 </head>
 <body>
@@ -440,6 +498,41 @@ html,body{height:100%;overflow:hidden;background:#000}
 </div>
 
 <div id="fade"></div>
+
+<!-- ============ 开场页 ============ -->
+<div id="intro">
+  <div class="en">
+    <h1>BLIND DATE</h1>
+    <p>It begins with a task card, a fake earthquake,<br>and a man who runs like an elephant.</p>
+    <p>Two men. One dessert shop. One cup of milk tea.<br>The choice you make at the end of chapter five<br>decides who stays.</p>
+    <p>He talks too much. He eats too fast.<br>He never learned how to say a sweet thing —<br>but he remembers everything you said.</p>
+    <p>Play gently. Some of them are more fragile<br>than they look.</p>
+  </div>
+  <div class="tiny">TAP ANYWHERE</div>
+</div>
+
+<!-- ============ 版权声明 ============ -->
+<div id="notice">
+  <h2>版 权 声 明</h2>
+  <div class="body">
+    本作品《相亲记》由 <b>喇叭说了算</b> 创作。<br>
+    人物、剧情、台词、立绘与配音，均为原创内容。<br>
+    仅供个人游玩，请勿用于任何商业用途。<br>
+    请勿修改、拆解、二次发布，或冒充原作者。
+  </div>
+  <div class="line"></div>
+  <div class="warn">
+    禁 止 截 图 · 禁 止 录 屏<br>
+    请戴上耳机，一个人玩。
+  </div>
+  <button class="go" id="goBtn">开 始 游 戏</button>
+</div>
+
+<!-- ============ 结局特效 ============ -->
+<div id="fx"><div class="layer"></div></div>
+
+<!-- ============ 重新开始 ============ -->
+<div id="replay">重 新 开 始</div>
 
 <script>
 /* ==========================================================
@@ -689,6 +782,8 @@ var BRANCH = {
     {who:'xu', text:'当时不疼。后来照镜子才疼。', scene:'shop'},
     {who:'zhang', text:'他这个人就这样，说不出好听话。', scene:'shop'},
     {who:'narr', text:'你回头看章均饱那张顶着一脸奶油的脸，忽然觉得，这位虽然丑得没边，倒是个实在人。', scene:'shop', focus:'zhang'},
+    {who:'narr', text:'你把椅子往里挪了挪。没走。', scene:'shop'},
+    {fx:'A', voice:'z23'},
     {who:'narr', text:'【完】', clear:true, scene:'end'}
   ],
   B:[
@@ -701,6 +796,9 @@ var BRANCH = {
     {who:'xu', text:'下次别让他约你。这个人黏，甩不掉。', scene:'street'},
     {who:'narr', text:'"你认识他？"', scene:'street'},
     {who:'xu', text:'认识。他是我工地上搬砖的。', scene:'street'},
+    {who:'narr', text:'你上了车。车门快关上的那一刻，你回头看了一眼。', scene:'car'},
+    {who:'narr', text:'甜品店门口，章均饱还站在那儿，脸上一层奶油没擦。', scene:'car'},
+    {fx:'B', voice:'z24'},
     {who:'narr', text:'【完】', clear:true, scene:'end'}
   ],
   C:[
@@ -710,8 +808,13 @@ var BRANCH = {
     {who:'xu', text:'工地上掉的架子。砸的。', scene:'shop'},
     {who:'narr', text:'"那你怎么不让它好好长？"', scene:'shop'},
     {who:'xu', text:'长好了，就得回去干活。留着这个，能多说两天。', scene:'shop'},
-    {who:'narr', text:'章均饱在边上把奶油舔干净了，插嘴："他这人就整这套，苦。你别搭理。"', scene:'shop'},
-    {who:'narr', text:'徐清风没跟他吵，只把袖子往下拉了拉，盖住了手背上那道划痕。', scene:'shop', focus:'xu'},
+    {who:'narr', text:'你没再问。过了一会儿，他忽然伸手，把你搁在桌上的手拿过去，掌心贴上自己脸上那道疤。', scene:'shop', focus:'xu'},
+    {who:'xu', text:'好痛。你吹吹，好不好。', scene:'shop', focus:'xu'},
+    {who:'narr', text:'你刚要开口——旁边那只手更快。', scene:'shop'},
+    {who:'narr', text:'章均饱一把攥住你另一只手，不由分说地按在他自己头顶上。', scene:'shop', focus:'zhang'},
+    {who:'zhang', text:'女加热，你是我的人，怎么就记不住呢？远离他！', voice:'z25', scene:'shop', focus:'zhang'},
+    {who:'narr', text:'你摸到了一手的头油。还有别的，碎碎的、凉凉的，落了你满手——', scene:'shop'},
+    {who:'narr', text:'雪花。', scene:'shop'},
     {who:'narr', text:'【完】', clear:true, scene:'end'}
   ]
 };
@@ -909,6 +1012,12 @@ function next(){
 
 /* 演一句 */
 function playLine(cfg){
+  /* 结局特效：不进对话框，直接上全屏 */
+  if(cfg && cfg.fx){
+    curVoice = cfg.voice || null;
+    showEndFx(cfg.fx);
+    return;
+  }
   setChara(cfg);
   curVoice = cfg.voice || null;
 
@@ -1015,9 +1124,30 @@ elVbtn.addEventListener('click', function(ev){
 });
 
 /* 开场 */
+/* ============ 开场流程：开场页 -> 版权页 -> 开始 ============ */
 setTimeout(function(){
   document.getElementById('fade').style.opacity = '0';
-  /* 立绘一开始都站着（压暗），谁说话谁亮 */
+}, 400);
+
+function startGame(){
+  document.getElementById('intro').classList.add('hide');
+  document.getElementById('notice').classList.remove('show');
+  var fxL = document.getElementById('fx');
+  fxL.className = '';
+  fxL.querySelector('.layer').innerHTML = '';
+  document.getElementById('replay').classList.remove('show');
+  elTxt.textContent = '';
+  elTag.style.display = 'none';
+  elChoi.classList.remove('show');
+  elTip.classList.remove('show');
+  elArrow.classList.remove('show');
+  elVbtn.classList.remove('show');
+  stopAudio();
+  /* 复位 */
+  shown = {};
+  curScene = null;
+  bgmSrc = null;
+  if(bgmNow){ try{ bgmNow.pause(); }catch(e){} bgmNow = null; }
   elZhang.style.display = 'block';
   elXu.style.display = 'block';
   elShop.classList.remove('off');
@@ -1025,7 +1155,80 @@ setTimeout(function(){
   queue = SCRIPT.slice();
   qi = 0;
   next();
-}, 400);
+}
+
+document.getElementById('intro').addEventListener('click', function(){
+  this.classList.add('hide');
+  document.getElementById('notice').classList.add('show');
+});
+
+document.getElementById('goBtn').addEventListener('click', function(ev){
+  ev.stopPropagation();
+  startGame();
+});
+
+/* ============ 结局特效 ============ */
+function showEndFx(type){
+  var fx = document.getElementById('fx');
+  var layer = fx.querySelector('.layer');
+  layer.innerHTML = '';
+  fx.className = 'show ' + type;
+
+  function red(txt, x, y, size, rot, delay, z){
+    var d = document.createElement('div');
+    d.className = 'red' + (Math.random() < .5 ? ' flick' : '');
+    d.textContent = txt;
+    d.style.left = x + '%';
+    d.style.top = y + '%';
+    d.style.fontSize = size + 'px';
+    d.style.transform = 'rotate(' + rot + 'deg)';
+    d.style.animationDelay = delay + 's';
+    if(z) d.style.zIndex = z;
+    layer.appendChild(d);
+  }
+
+  if(type === 'a'){
+    var bg = document.createElement('div');
+    bg.className = 'ph';
+    layer.appendChild(bg);
+    var P1 = [[7,11,26,-7],[61,7,21,6],[29,25,31,-4],[70,33,19,9],
+              [4,41,23,-8],[51,51,29,5],[15,63,21,-6],[65,69,25,8]];
+    P1.forEach(function(p, i){ red('我也喜欢你', p[0], p[1], p[2], p[3], i * .2); });
+  } else {
+    var L = [[5,9,41,50,-9],[47,5,39,48,7],[23,29,43,53,-4],
+             [57,39,37,47,11],[9,49,39,49,-6],[39,61,41,51,5]];
+    L.forEach(function(a, i){
+      var d = document.createElement('div');
+      d.className = 'ph';
+      d.style.left = a[0] + '%';
+      d.style.top = a[1] + '%';
+      d.style.width = a[2] + '%';
+      d.style.height = a[3] + '%';
+      d.style.transform = 'rotate(' + a[4] + 'deg)';
+      d.style.zIndex = i;
+      d.style.opacity = .86;
+      layer.appendChild(d);
+    });
+    var P2 = [[8,18,25,-8],[53,24,21,7],[25,50,29,-5],[59,62,23,9]];
+    P2.forEach(function(p, i){ red('为什么不选我', p[0], p[1], p[2], p[3], i * .28, 20); });
+  }
+
+  setTimeout(function(){
+    var r = document.getElementById('replay');
+    r.classList.add('show');
+    r.onclick = function(){
+      fx.className = '';
+      layer.innerHTML = '';
+      r.classList.remove('show');
+      document.getElementById('intro').classList.remove('hide');
+      document.getElementById('notice').classList.remove('show');
+      elTxt.textContent = '';
+      elTag.style.display = 'none';
+      stopAudio();
+      if(bgmNow){ try{ bgmNow.pause(); }catch(e){} bgmNow = null; bgmSrc = null; }
+    };
+  }, 2600);
+}
 </script>
 <script>
 /* iOS 音频解锁：第一次触摸时用 0 音量放一条音频，把播放权限要下来 */
