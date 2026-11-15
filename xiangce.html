@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>相册</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { width:100%; height:100%; overflow:hidden; background:#08080a; }
+body { font-family:"Microsoft YaHei","Courier New",monospace; color:#c9c4bb; }
+
+#app { position:fixed; inset:0; display:flex; flex-direction:column; background:#08080a; }
+
+#top {
+  flex-shrink:0; padding:12px 16px 8px; display:flex; justify-content:space-between; align-items:baseline;
+  font-size:11.5px; color:#6b6559; letter-spacing:1px;
+}
+#top .name { color:#9a9284; font-family:"Courier New",monospace; }
+#top .cnt { color:#4a453d; }
+
+#photoWrap {
+  flex:1; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;
+}
+#pcv { display:block; width:100%; height:auto; max-height:100%; }
+
+#stamp {
+  position:absolute; right:14px; bottom:12px; font-family:"Courier New",monospace;
+  font-size:10px; color:rgba(255,220,140,.55); letter-spacing:1px; text-shadow:0 0 6px #000;
+  pointer-events:none;
+}
+
+#hint {
+  position:absolute; left:0; right:0; bottom:16px; text-align:center; font-size:11px;
+  color:#4a453d; letter-spacing:2px; pointer-events:none;
+}
+
+#bar {
+  flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
+  padding:10px 14px 14px; gap:8px;
+}
+.nb {
+  flex:1; padding:11px 0; background:#101014; border:1px solid #24242c; color:#a8a197;
+  font-family:inherit; font-size:13px; letter-spacing:2px; border-radius:6px;
+}
+.nb:active { background:#a8a197; color:#000; }
+.nb:disabled { opacity:.25; }
+
+#info {
+  position:fixed; inset:0; z-index:60; background:rgba(6,6,8,.96);
+  display:flex; flex-direction:column; justify-content:center; padding:26px;
+}
+#info h3 { color:#a8a197; font-size:13px; letter-spacing:2px; margin-bottom:16px; }
+#info .row { display:flex; justify-content:space-between; font-size:12px; padding:7px 0; border-bottom:1px solid #18181e; }
+#info .row span:first-child { color:#5a554c; }
+#info .row span:last-child { color:#c9c4bb; font-family:"Courier New",monospace; }
+#info .note { margin-top:16px; font-size:11px; color:#4a453d; line-height:1.9; }
+#info .close { margin-top:22px; padding:10px; background:transparent; border:1px solid #33333c; color:#a8a197; font-family:inherit; }
+
+#face { position:fixed; inset:0; background:#000; z-index:100; }
+#face canvas { width:100%; height:100%; display:block; }
+.hidden { display:none !important; }
+
+#end {
+  position:fixed; inset:0; z-index:120; background:#050506; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; padding:30px; text-align:center;
+}
+#end h2 { font-size:16px; letter-spacing:5px; color:#8a5040; margin-bottom:20px; }
+#end p { font-size:12.5px; line-height:2.1; color:#8a8578; margin-bottom:7px; }
+#end p.w { color:#d8d2c4; }
+#end .again { margin-top:26px; padding:10px 22px; background:transparent; border:1px solid #33333c; color:#a8a197; font-family:inherit; font-size:12px; }
+
+#start {
+  position:fixed; inset:0; z-index:200; background:#08080a; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; padding:32px; text-align:center;
+}
+#start h1 { font-size:17px; letter-spacing:8px; color:#a8a197; margin-bottom:14px; }
+#start .s { font-size:11px; color:#4a453d; line-height:2.1; margin-bottom:28px; }
+#startBtn { padding:12px 28px; background:transparent; border:1px solid #33333c; color:#a8a197; font-family:inherit; font-size:13px; letter-spacing:4px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="top">
+    <span class="name" id="fname">IMG_0000.jpg</span>
+    <span class="cnt" id="fcnt">1 / 20</span>
+  </div>
+
+  <div id="photoWrap">
+    <canvas id="pcv"></canvas>
+    <div id="stamp"></div>
+    <div id="hint">左右点击翻页</div>
+  </div>
+
+  <div id="bar">
+    <button class="nb" id="prevBtn">‹ 上一张</button>
+    <button class="nb" id="infoBtn" style="flex:0 0 30%">信息</button>
+    <button class="nb" id="nextBtn">下一张 ›</button>
+  </div>
+</div>
+
+<div id="info" class="hidden">
+  <h3>照片信息</h3>
+  <div id="infoRows"></div>
+  <div class="note">这台手机是在楼下的长椅下面捡到的。<br>锁屏没设，相册里的东西都在。</div>
+  <button class="close" id="closeInfo">关掉</button>
+</div>
+
+<div id="face" class="hidden"><canvas id="fcv"></canvas></div>
+
+<div id="end" class="hidden">
+  <h2>最 后 一 张</h2>
+  <div id="endBody"></div>
+  <button class="again" onclick="location.reload()">重新翻开</button>
+</div>
+
+<div id="start">
+  <h1>相 册</h1>
+  <div class="s">
+    同一部手机，同一个房间。<br>
+    二十张，一天一张。<br><br>
+    <span style="color:#6a4a4a">有东西在一点一点变多。</span>
+  </div>
+  <button id="startBtn">翻 开 相 册</button>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var cv = document.getElementById("pcv");
+  var ctx = cv.getContext("2d");
+  var PW = 480, PH = 620;
+  cv.width = PW; cv.height = PH;
+
+  var fnameEl = document.getElementById("fname");
+  var fcntEl = document.getElementById("fcnt");
+  var stampEl = document.getElementById("stamp");
+  var infoEl = document.getElementById("info");
+  var infoRows = document.getElementById("infoRows");
+  var faceEl = document.getElementById("face");
+  var fcv = document.getElementById("fcv");
+  var fctx = fcv.getContext("2d");
+  var endEl = document.getElementById("end");
+
+  var cur = 0;
+  var seen = {};        // 已看过的张数
+  var deviceName = "未知设备";
+
+  // ============ 声音 ============
+  var AC = null;
+  function initAudio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } } }
+  function tone(f, d, type, g, sweepTo) {
+    if (!AC) return;
+    var o = AC.createOscillator(), gn = AC.createGain();
+    o.type = type || "sine";
+    var t = AC.currentTime;
+    o.frequency.setValueAtTime(f, t);
+    if (sweepTo) o.frequency.exponentialRampToValueAtTime(sweepTo, t + d);
+    gn.gain.setValueAtTime(g || 0.05, t);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(gn); gn.connect(AC.destination);
+    o.start(t); o.stop(t + d + 0.05);
+  }
+  function noise(d, vol, hp) {
+    if (!AC) return;
+    var len = Math.floor(AC.sampleRate * d);
+    var buf = AC.createBuffer(1, len, AC.sampleRate);
+    var ch = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (vol || 0.2);
+    var src = AC.createBufferSource(); src.buffer = buf;
+    var f = AC.createBiquadFilter(); f.type = "highpass"; f.frequency.value = hp || 1200;
+    var g = AC.createGain(); g.gain.value = 0.06;
+    src.connect(f); f.connect(g); g.connect(AC.destination);
+    src.start();
+  }
+  function step() { tone(64, 0.15, "sine", 0.08); noise(0.07, 0.12, 260); }
+  function whisper() { noise(0.6, 0.2, 800); }
+  function scream() {
+    if (!AC) return;
+    var t = AC.currentTime;
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = "sawtooth";
+    o.frequency.setValueAtTime(1300, t);
+    o.frequency.exponentialRampToValueAtTime(60, t + 0.9);
+    g.gain.setValueAtTime(0.15, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t); o.stop(t + 1.15);
+    noise(1.0, 0.34, 1500);
+    var lo = AC.createOscillator(), lg = AC.createGain();
+    lo.type = "sine"; lo.frequency.value = 44;
+    lg.gain.setValueAtTime(0.23, t);
+    lg.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
+    lo.connect(lg); lg.connect(AC.destination);
+    lo.start(t); lo.stop(t + 1.35);
+  }
+  function buzz(p) { if (navigator.vibrate) { try { navigator.vibrate(p || 60); } catch (e) {} } }
+
+  // ============ 20 张照片的异常 ============
+  // ghost: 人影(0=没有,1=淡,2=清晰,3=贴脸)
+  // 其余为布尔开关
+  var PHOTOS = [
+    { },                                                                 // 1
+    { sheet: 1 },                                                        // 2 床单皱了
+    { sheet: 1, shoe: 1 },                                               // 3 窗台多一只鞋
+    { sheet: 1, shoe: 1, closet: 0.15 },                                 // 4 衣柜开一条缝
+    { sheet: 1, shoe: 1, closet: 0.3, mirrorShadow: 1 },                 // 5 镜子里有影子
+    { sheet: 1, shoe: 1, closet: 0.4, mirrorShadow: 1, wet: 1 },         // 6 湿地脚印
+    { sheet: 1, shoe: 1, closet: 0.5, mirrorShadow: 1, wet: 1, ghost: 0.25 }, // 7 床侧轮廓
+    { sheet: 1, shoe: 1, closet: 0.55, mirrorShadow: 1, wet: 1, ghost: 0.3, pillow2: 1 }, // 8 两个枕头
+    { sheet: 1, shoe: 1, closet: 0.6, mirrorShadow: 1, wet: 1, ghost: 0.35, pillow2: 1, curtain: 1, foot: 1 }, // 9 窗帘下的脚
+    { sheet: 1, shoe: 1, closet: 0.7, mirrorShadow: 1, wet: 1, ghost: 0.4, pillow2: 1, curtain: 1, foot: 1, doorOpen: 1 }, // 10 门开着
+    { sheet: 1, shoe: 1, closet: 0.8, mirrorShadow: 1, wet: 1, ghost: 0.5, pillow2: 1, curtain: 1, foot: 1, doorOpen: 1, sitting: 1 }, // 11 它坐在床边
+    { sheet: 1, shoe: 1, closet: 0.85, mirrorShadow: 1, wet: 1, ghost: 0.6, pillow2: 1, curtain: 1, foot: 1, doorOpen: 1, lying: 1, standing: 1 }, // 12 床上躺着一个人
+    { sheet: 1, shoe: 1, closet: 0.9, mirrorShadow: 1, wet: 1, ghost: 0.7, pillow2: 1, curtain: 1, foot: 1, doorOpen: 1, lying: 1, standing: 1, scratches: 1 }, // 13 墙上有划痕
+    { sheet: 1, shoe: 1, closet: 1, mirrorShadow: 1, wet: 1, ghost: 0.8, pillow2: 1, curtain: 1, foot: 1, doorOpen: 1, lying: 1, standing: 1, scratches: 1, stain: 1 }, // 14 天花板水渍
+    { sheet: 1, shoe: 1, closet: 1, mirrorShadow: 1, wet: 1, ghost: 0.9, pillow2: 1, curtain: 1, foot: 1, doorOpen: 1, lying: 1, standing: 1, scratches: 1, stain: 1, hand: 0.3 }, // 15 画面边缘出现手指
+    { sheet: 1, shoe: 1, closet: 1, mirrorShadow: 1, wet: 1, ghost: 1, pillow2: 1, curtain: 1, foot: 1, doorOpen: 1, lying: 1, standing: 1, scratches: 1, stain: 1, hand: 0.5 }, // 16
+    { sheet: 1, shoe: 1, closet: 1, mirrorShadow: 1, wet: 1, ghost: 1, pillow2: 1, curtain: 1, foot: 1, doorOpen: 1, lying: 1, standing: 1, scratches: 1, stain: 1, hand: 0.7, faceOn: 1 }, // 17 它对着镜头
+    { faceClose: 1 },                                                    // 18 贴脸
+    { bedEyes: 1 },                                                      // 19 房间突然干净了；床下有眼睛
+    { last: 1 }                                                          // 20 现在
+  ];
+
+  // ============ 绘制 ============
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+
+  function drawPhoto(idx) {
+    var P = PHOTOS[idx] || {};
+
+    if (P.faceClose) { drawFacePhoto(); } else {
+      drawRoom(P);
+    }
+    grain();
+  }
+
+  function drawRoom(P) {
+    // 墙
+    ctx.fillStyle = "#2b2620";
+    ctx.fillRect(0, 0, PW, PH);
+    // 墙面纹理
+    for (var i = 0; i < 26; i++) {
+      ctx.fillStyle = "rgba(255,240,210," + rnd(0.008, 0.02) + ")";
+      ctx.fillRect(rnd(0, PW), rnd(0, 430), rnd(10, 60), rnd(2, 5));
+    }
+    // 地板
+    ctx.fillStyle = "#1b1710";
+    ctx.fillRect(0, 430, PW, PH - 430);
+    ctx.strokeStyle = "rgba(120,100,70,.12)";
+    for (var l = 0; l < 10; l++) {
+      ctx.beginPath();
+      ctx.moveTo(-60 + l * 62, PH);
+      ctx.lineTo(120 + l * 40, 430);
+      ctx.stroke();
+    }
+    // 踢脚线
+    ctx.fillStyle = "#241e16";
+    ctx.fillRect(0, 422, PW, 12);
+
+    // 窗（右上）
+    ctx.fillStyle = "#0d141b";
+    ctx.fillRect(330, 60, 110, 140);
+    ctx.strokeStyle = "#3a3226";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(330, 60, 110, 140);
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(385, 60); ctx.lineTo(385, 200); ctx.stroke();
+    // 窗帘
+    ctx.fillStyle = "#231d16";
+    if (P.curtain) {
+      ctx.fillRect(318, 52, 22, 158);
+      ctx.fillRect(430, 52, 22, 158);
+    } else {
+      ctx.fillRect(318, 52, 26, 158);
+      ctx.fillRect(426, 52, 26, 158);
+    }
+    // 窗帘下的脚
+    if (P.foot) {
+      ctx.fillStyle = "#c9bba6";
+      ctx.beginPath(); ctx.ellipse(438, 214, 9, 5, 0.2, 0, 7); ctx.fill();
+      ctx.fillStyle = "#8a7c68";
+      ctx.fillRect(432, 196, 8, 20);
+    }
+
+    // 镜子（左墙）
+    ctx.fillStyle = "#141a1e";
+    ctx.fillRect(44, 78, 86, 120);
+    ctx.strokeStyle = "#3a3226";
+    ctx.strokeRect(44, 78, 86, 120);
+    if (P.mirrorShadow) {
+      ctx.fillStyle = "rgba(8,6,6," + (0.35 + 0.4 * (P.ghost || 0)) + ")";
+      ctx.beginPath(); ctx.ellipse(88, 150, 16, 30, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(88, 116, 10, 0, 7); ctx.fill();
+    } else {
+      ctx.fillStyle = "rgba(150,170,180,.10)";
+      ctx.fillRect(46, 80, 40, 116);
+    }
+
+    // 衣柜（左侧）
+    ctx.fillStyle = "#231c14";
+    ctx.fillRect(150, 430, 110, 190);
+    ctx.strokeStyle = "#31281c";
+    ctx.strokeRect(150, 430, 110, 190);
+    ctx.beginPath(); ctx.moveTo(205, 430); ctx.lineTo(205, 620); ctx.stroke();
+    if (P.closet) {
+      var w = 26 + P.closet * 4;
+      ctx.fillStyle = "#050403";
+      ctx.fillRect(206, 434, w, 182);
+      // 缝里的暗
+      ctx.fillStyle = "rgba(0,0,0,.85)";
+      ctx.fillRect(206, 434, w * 0.7, 182);
+    }
+
+    // 床（中间偏左）
+    ctx.fillStyle = "#2a2318";
+    ctx.fillRect(60, 300, 250, 130);       // 床垫
+    ctx.fillStyle = "#3a3122";
+    ctx.fillRect(60, 280, 250, 26);        // 床头
+    ctx.fillStyle = "#6a6152";
+    ctx.fillRect(76, 292, 62, 34);         // 枕头1
+    if (P.pillow2) {
+      ctx.fillRect(150, 292, 62, 34);      // 枕头2
+    }
+    // 被子
+    ctx.fillStyle = "#3f3a30";
+    ctx.fillRect(60, 330, 250, 100);
+    if (P.sheet) {
+      ctx.strokeStyle = "rgba(200,190,170,.14)";
+      for (var s = 0; s < 5; s++) {
+        ctx.beginPath();
+        ctx.moveTo(70, 340 + s * 16);
+        ctx.bezierCurveTo(140, 336 + s * 16 + rnd(-6, 6), 220, 344 + s * 16 + rnd(-6, 6), 305, 340 + s * 16);
+        ctx.stroke();
+      }
+    }
+
+    // 床上躺着的人
+    if (P.lying) {
+      ctx.fillStyle = "#2e2a22";
+      ctx.beginPath();
+      ctx.ellipse(180, 350, 96, 30, 0, 0, 7);
+      ctx.fill();
+      ctx.fillStyle = "#8a7a62";
+      ctx.beginPath(); ctx.arc(96, 340, 18, 0, 7); ctx.fill();  // 头
+    }
+
+    // 门（右下）
+    ctx.fillStyle = "#241d15";
+    ctx.fillRect(370, 430, 100, 190);
+    ctx.strokeStyle = "#332a1e";
+    ctx.strokeRect(370, 430, 100, 190);
+    if (P.doorOpen) {
+      ctx.fillStyle = "#020202";
+      ctx.fillRect(374, 434, 92, 182);
+      // 门下透光
+      ctx.fillStyle = "rgba(180,170,140,.10)";
+      ctx.fillRect(374, 596, 92, 4);
+    } else {
+      ctx.fillStyle = "#4a3d29";
+      ctx.beginPath(); ctx.arc(384, 528, 3.5, 0, 7); ctx.fill();
+    }
+
+    // 窗台上的鞋
+    if (P.shoe) {
+      ctx.fillStyle = "#9a8f7c";
+      ctx.beginPath(); ctx.ellipse(410, 203, 16, 8, 0.1, 0, 7); ctx.fill();
+      ctx.fillStyle = "#7a7060";
+      ctx.fillRect(398, 194, 24, 8);
+    }
+
+    // 湿地脚印（从门口走向床）
+    if (P.wet) {
+      ctx.fillStyle = "rgba(120,140,150,.18)";
+      for (var wf = 0; wf < 5; wf++) {
+        ctx.beginPath();
+        ctx.ellipse(390 - wf * 42, 470 - wf * 16, 9, 5, -0.3, 0, 7);
+        ctx.fill();
+      }
+    }
+
+    // 墙上的划痕
+    if (P.scratches) {
+      ctx.strokeStyle = "rgba(210,200,180,.28)";
+      ctx.lineWidth = 2;
+      for (var sc = 0; sc < 6; sc++) {
+        ctx.beginPath();
+        ctx.moveTo(240 + sc * 8, 250);
+        ctx.lineTo(236 + sc * 9, 300);
+        ctx.stroke();
+      }
+      ctx.lineWidth = 1;
+    }
+
+    // 天花板水渍
+    if (P.stain) {
+      ctx.fillStyle = "rgba(90,80,60,.35)";
+      ctx.beginPath();
+      ctx.ellipse(200, 40, 70, 26, 0.2, 0, 7);
+      ctx.fill();
+      ctx.fillStyle = "rgba(60,50,40,.28)";
+      ctx.beginPath();
+      ctx.ellipse(180, 36, 12, 6, 0, 0, 7);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(222, 44, 12, 6, 0, 0, 7);
+      ctx.fill();
+    }
+
+    // ---- 人影 ----
+    if (P.ghost) {
+      var gx = 236, gy = 430;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, P.ghost);
+      // 坐在床边
+      if (P.sitting) {
+        ctx.fillStyle = "#0a0806";
+        ctx.beginPath(); ctx.arc(gx - 40, 330, 15, 0, 7); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(gx - 70, 430); ctx.lineTo(gx - 56, 344);
+        ctx.lineTo(gx - 24, 344); ctx.lineTo(gx - 12, 430);
+        ctx.closePath(); ctx.fill();
+        // 腿
+        ctx.fillRect(gx - 60, 430, 12, 52);
+        ctx.fillRect(gx - 26, 430, 12, 52);
+      } else if (P.faceOn) {
+        // 正面站在床前
+        ctx.fillStyle = "#080606";
+        ctx.beginPath(); ctx.arc(gx, 250, 24, 0, 7); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(gx - 46, 430); ctx.lineTo(gx - 32, 274);
+        ctx.lineTo(gx + 32, 274); ctx.lineTo(gx + 46, 430);
+        ctx.closePath(); ctx.fill();
+        // 脸
+        ctx.fillStyle = "rgba(226,216,200,.92)";
+        ctx.beginPath(); ctx.ellipse(gx, 250, 21, 26, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = "#000";
+        ctx.beginPath(); ctx.ellipse(gx - 8, 246, 4.6, 6, 0, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(gx + 8, 246, 4.6, 6, 0, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(gx, 264, 6, 3.4, 0, 0, 7); ctx.fill();
+      } else {
+        // 半透明站立轮廓
+        ctx.fillStyle = "#0a0806";
+        ctx.beginPath(); ctx.arc(gx, 236, 17, 0, 7); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(gx - 34, 430); ctx.lineTo(gx - 24, 256);
+        ctx.lineTo(gx + 24, 256); ctx.lineTo(gx + 34, 430);
+        ctx.closePath(); ctx.fill();
+        if (P.ghost > 0.45) {
+          ctx.fillStyle = "rgba(230,225,210,.85)";
+          ctx.beginPath(); ctx.arc(gx - 6, 234, 2.4, 0, 7); ctx.fill();
+          ctx.beginPath(); ctx.arc(gx + 6, 234, 2.4, 0, 7); ctx.fill();
+        }
+      }
+      // 站着的那个（配 lying）
+      if (P.standing) {
+        ctx.fillStyle = "#080606";
+        ctx.beginPath(); ctx.arc(gx + 92, 300, 15, 0, 7); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(gx + 62, 430); ctx.lineTo(gx + 78, 318);
+        ctx.lineTo(gx + 108, 318); ctx.lineTo(gx + 122, 430);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // 拍摄者的手指（画面边缘）
+    if (P.hand) {
+      ctx.save();
+      ctx.globalAlpha = P.hand;
+      ctx.fillStyle = "#c8a888";
+      ctx.beginPath();
+      ctx.ellipse(20, 480, 34, 74, -0.35, 0, 7);
+      ctx.fill();
+      ctx.fillStyle = "#a88868";
+      ctx.beginPath();
+      ctx.ellipse(4, 430, 26, 44, -0.3, 0, 7);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 床下的眼睛
+    if (P.bedEyes) {
+      // 打扫干净的房间
+      ctx.fillStyle = "rgba(10,8,8,.95)";
+      ctx.fillRect(70, 424, 230, 44);
+      // 眼睛
+      ctx.fillStyle = "rgba(235,232,220,.92)";
+      ctx.beginPath(); ctx.arc(150, 452, 4.2, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(170, 452, 4.2, 0, 7); ctx.fill();
+      ctx.fillStyle = "#000";
+      ctx.beginPath(); ctx.arc(150, 452, 1.9, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(170, 452, 1.9, 0, 7); ctx.fill();
+    }
+
+    // 最后一张：反射里举着手机
+    if (P.last) {
+      ctx.fillStyle = "rgba(0,0,0,.55)";
+      ctx.fillRect(44, 78, 86, 120);
+      // 手机
+      ctx.fillStyle = "#111";
+      ctx.fillRect(72, 120, 22, 40);
+      ctx.strokeStyle = "#555";
+      ctx.strokeRect(72, 120, 22, 40);
+      // 人影 + 脸
+      ctx.fillStyle = "#0a0908";
+      ctx.beginPath(); ctx.arc(90, 112, 16, 0, 7); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(64, 176); ctx.lineTo(72, 128);
+      ctx.lineTo(108, 128); ctx.lineTo(116, 176);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "rgba(232,226,214,.9)";
+      ctx.beginPath(); ctx.ellipse(90, 112, 13, 16, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = "#000";
+      ctx.beginPath(); ctx.ellipse(85, 110, 2.6, 3.6, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(95, 110, 2.6, 3.6, 0, 0, 7); ctx.fill();
+    }
+  }
+
+  // 第 18 张：贴脸
+  function drawFacePhoto() {
+    ctx.fillStyle = "#070404";
+    ctx.fillRect(0, 0, PW, PH);
+    var cx = PW / 2, cy = PH / 2 - 20;
+    var rx = 190, ry = 240;
+    var g = ctx.createRadialGradient(cx - 30, cy - 60, 30, cx, cy, rx * 1.2);
+    g.addColorStop(0, "#e6dcd0");
+    g.addColorStop(0.6, "#b3a598");
+    g.addColorStop(1, "#1a1412");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, 7); ctx.fill();
+    // 眼窝
+    function eye(ex, ey, er) {
+      var gg = ctx.createRadialGradient(ex, ey, er * 0.05, ex, ey, er);
+      gg.addColorStop(0, "#000");
+      gg.addColorStop(0.7, "#0a0504");
+      gg.addColorStop(1, "rgba(25,12,12,0)");
+      ctx.fillStyle = gg;
+      ctx.beginPath(); ctx.ellipse(ex, ey, er, er * 1.35, 0, 0, 7); ctx.fill();
+    }
+    eye(cx - 72, cy - 34, 46);
+    eye(cx + 72, cy - 34, 46);
+    // 嘴
+    ctx.fillStyle = "#000";
+    ctx.beginPath(); ctx.ellipse(cx, cy + 110, 56, 34, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#d8cec0";
+    for (var i = -3; i <= 3; i++) ctx.fillRect(cx + i * 14 - 3, cy + 80, 6, 12);
+    // 暗角
+    var vg = ctx.createRadialGradient(cx, cy, 150, cx, cy, 340);
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(0,0,0,1)");
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, PW, PH);
+  }
+
+  // 颗粒与暗角（营造照片质感）
+  function grain() {
+    for (var i = 0; i < 1600; i++) {
+      ctx.fillStyle = "rgba(255,255,255," + (Math.random() * 0.035) + ")";
+      ctx.fillRect(Math.random() * PW, Math.random() * PH, 1.6, 1.6);
+    }
+    var vg = ctx.createRadialGradient(PW / 2, PH / 2, PH * 0.32, PW / 2, PH / 2, PH * 0.78);
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(0,0,0,.62)");
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, PW, PH);
+    // 一点点偏色
+    ctx.fillStyle = "rgba(40,30,10,.05)";
+    ctx.fillRect(0, 0, PW, PH);
+  }
+
+  // ============ 日期 & 文件名 ============
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function photoDate(idx) {
+    var d = new Date();
+    // 第 20 张 = 今天；往前每张差一天
+    var back = (PHOTOS.length - 1) - idx;
+    d.setDate(d.getDate() - back);
+    return d;
+  }
+  function fname(i, d) {
+    return "IMG_" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
+           "_" + pad(19 + (i % 3)) + pad((i * 7) % 60) + pad((i * 13) % 60) + ".jpg";
+  }
+
+  function render() {
+    var P = PHOTOS[cur] || {};
+    drawPhoto(cur);
+    var d = photoDate(cur);
+    fnameEl.textContent = fname(cur, d);
+    fcntEl.textContent = (cur + 1) + " / " + PHOTOS.length;
+    var label = (cur === PHOTOS.length - 1) ? "刚刚" : (d.getFullYear() + "." + pad(d.getMonth() + 1) + "." + pad(d.getDate()) + "  " + pad(2 + (cur % 4)) + ":" + pad((cur * 11) % 60));
+    stampEl.textContent = label;
+
+    seen[cur] = true;
+
+    // 特定张数的声音
+    if (P.faceClose) { /* 翻到第18张时单独处理 */ }
+    if (P.ghost > 0.3) whisper();
+    if (P.faceOn) step();
+    if (P.bedEyes) { tone(52, 0.5, "sine", 0.06); }
+
+    // 第 18 张 → 突脸
+    if (P.faceClose && !P._done) {
+      P._done = true;
+      setTimeout(function () { scare(1500, 0); }, 700);
+    }
+    // 第 20 张 → 结局
+    if (P.last) {
+      setTimeout(function () { ending(); }, 1600);
+    }
+  }
+
+  // ============ 突脸 ============
+  var faceRAF = null, faceFrame = 0;
+
+  function resizeFace() { fcv.width = window.innerWidth; fcv.height = window.innerHeight; }
+
+  function faceLoop() {
+    var w = fcv.width, h = fcv.height;
+    var cx = w / 2 + (Math.random() - 0.5) * w * 0.03;
+    var cy = h / 2 + (Math.random() - 0.5) * h * 0.02;
+    var rx = w * 0.36, ry = h * 0.33;
+
+    fctx.fillStyle = "#070303";
+    fctx.fillRect(0, 0, w, h);
+    var g = fctx.createRadialGradient(cx - rx * 0.2, cy - ry * 0.25, rx * 0.08, cx, cy, rx * 1.2);
+    g.addColorStop(0, "#e8ded2");
+    g.addColorStop(0.55, "#b5a89b");
+    g.addColorStop(1, "#150f0d");
+    fctx.fillStyle = g;
+    fctx.beginPath(); fctx.ellipse(cx, cy, rx, ry, 0, 0, 7); fctx.fill();
+
+    function eye(ex, ey, er) {
+      var gg = fctx.createRadialGradient(ex, ey, er * 0.04, ex, ey, er);
+      gg.addColorStop(0, "#000");
+      gg.addColorStop(0.68, "#0a0505");
+      gg.addColorStop(1, "rgba(25,12,12,0)");
+      fctx.fillStyle = gg;
+      fctx.beginPath(); fctx.ellipse(ex, ey, er, er * 1.35, 0, 0, 7); fctx.fill();
+    }
+    eye(cx - rx * 0.37, cy - ry * 0.14, rx * 0.26);
+    eye(cx + rx * 0.37, cy - ry * 0.14, rx * 0.26);
+
+    var open = 1 + Math.sin(faceFrame * 0.3) * 0.2;
+    fctx.fillStyle = "#000";
+    fctx.beginPath(); fctx.ellipse(cx, cy + ry * 0.46, rx * 0.29, ry * 0.19 * open, 0, 0, 7); fctx.fill();
+    fctx.fillStyle = "#d9cfc2";
+    for (var i = -3; i <= 3; i++) fctx.fillRect(cx + i * rx * 0.073 - 3, cy + ry * 0.46 - ry * 0.19 * open, 6, ry * 0.05);
+
+    var vg = fctx.createRadialGradient(cx, cy, rx * 0.85, cx, cy, rx * 1.9);
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(0,0,0,1)");
+    fctx.fillStyle = vg;
+    fctx.fillRect(0, 0, w, h);
+
+    for (var n = 0; n < 900; n++) {
+      fctx.fillStyle = "rgba(255,255,255," + (Math.random() * 0.05) + ")";
+      fctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+    if (Math.random() < 0.4) {
+      fctx.fillStyle = "rgba(170,0,0," + (Math.random() * 0.13) + ")";
+      fctx.fillRect(0, 0, w, h);
+    }
+    faceFrame++;
+    faceRAF = requestAnimationFrame(faceLoop);
+  }
+
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  async function scare(dur) {
+    resizeFace();
+    faceEl.classList.remove("hidden");
+    scream();
+    buzz([0, 90, 50, 200, 60, 300]);
+    if (!faceRAF) faceRAF = requestAnimationFrame(faceLoop);
+    await wait(dur || 1500);
+    faceEl.classList.add("hidden");
+    await wait(1000);
+  }
+
+  // ============ 翻页 ============
+  function go(n) {
+    if (n < 0 || n >= PHOTOS.length) return;
+    cur = n;
+    tone(340, 0.05, "square", 0.02);
+    render();
+    document.getElementById("prevBtn").disabled = (cur === 0);
+    document.getElementById("nextBtn").disabled = (cur === PHOTOS.length - 1);
+    document.getElementById("hint").style.opacity = (cur > 1) ? 0 : 1;
+  }
+
+  // ============ 信息面板 ============
+  function showInfo() {
+    var d = photoDate(cur);
+    var isLast = (cur === PHOTOS.length - 1);
+    var rows = [
+      ["文件", fname(cur, d)],
+      ["尺寸", "3024 × 4032"],
+      ["大小", (2 + (cur % 5) * 0.4).toFixed(1) + " MB"],
+      ["拍摄时间", isLast ? "刚刚" : (d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(2 + (cur % 4)) + ":" + pad((cur * 11) % 60))],
+      ["拍摄设备", deviceName],
+      ["位置", "已关闭"],
+      ["来源", "本机相机"]
+    ];
+    var html = "";
+    rows.forEach(function (r) {
+      html += "<div class='row'><span>" + r[0] + "</span><span>" + r[1] + "</span></div>";
+    });
+    infoRows.innerHTML = html;
+    infoEl.classList.remove("hidden");
+    tone(500, 0.05, "square", 0.02);
+  }
+
+  // ============ 结局 ============
+  function ending() {
+    var d = new Date();
+    document.getElementById("endBody").innerHTML =
+      "<p>二十张照片，同一个房间，一天一张。</p>" +
+      "<p>最后一张的拍摄时间是——</p>" +
+      "<p class='w'>" + d.getFullYear() + "." + pad(d.getMonth() + 1) + "." + pad(d.getDate()) +
+      " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + "</p>" +
+      "<p>也就是现在。</p>" +
+      "<p style='margin-top:16px;color:#6a6558;font-size:11.5px'>拍摄设备：" + deviceName + "</p>" +
+      "<p style='color:#6a6558;font-size:11.5px'>而这个相册，是别人手机的。</p>" +
+      "<p style='margin-top:18px;color:#8a5040' >相册里最后更新的那张，拍的是镜子。</p>" +
+      "<p style='color:#8a5040'>镜子里拿着手机的人，拍下了这一张。</p>";
+    endEl.classList.remove("hidden");
+    tone(58, 1.4, "sawtooth", 0.05);
+    buzz([200, 100, 260]);
+  }
+
+  // ============ 启动 ============
+  // 读设备名（只作为"照片信息"里的元数据，不发声、不点名）
+  (function () {
+    var ua = navigator.userAgent || "";
+    var m = ua.match(/;\s*([^;)]+)\s+Build\//);
+    if (m) deviceName = m[1].trim();
+    else if (/iPhone/.test(ua)) deviceName = "iPhone";
+    else deviceName = "Android";
+  })();
+
+  drawPhoto(0);
+  fnameEl.textContent = "IMG_0000.jpg";
+  fcntEl.textContent = "1 / " + PHOTOS.length;
+  document.getElementById("prevBtn").disabled = true;
+
+  document.getElementById("startBtn").addEventListener("click", function () {
+    initAudio();
+    tone(420, 0.07, "sine", 0.03);
+    document.getElementById("start").classList.add("hidden");
+    go(0);
+  });
+
+  document.getElementById("nextBtn").addEventListener("click", function () { go(cur + 1); });
+  document.getElementById("prevBtn").addEventListener("click", function () { go(cur - 1); });
+  document.getElementById("infoBtn").addEventListener("click", showInfo);
+  document.getElementById("closeInfo").addEventListener("click", function () { infoEl.classList.add("hidden"); });
+
+  // 点画面左右半边翻页
+  cv.addEventListener("click", function (e) {
+    var r = cv.getBoundingClientRect();
+    var x = (e.clientX - r.left) / r.width;
+    if (x < 0.35) go(cur - 1);
+    else if (x > 0.65) go(cur + 1);
+    else showInfo();
+  });
+
+})();
+</script>
+
+</body>
+</html>
