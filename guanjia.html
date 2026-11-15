@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>1207 · 客房服务</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { width:100%; height:100%; overflow:hidden; background:#0a0a0c; }
+body { font-family:"Songti SC","STSong","Microsoft YaHei",serif; color:#d9d2c4; }
+
+#app { position:fixed; inset:0; display:flex; flex-direction:column; background:#0a0a0c; }
+
+#top {
+  flex-shrink:0; padding:13px 18px 11px; display:flex; justify-content:space-between; align-items:baseline;
+  border-bottom:1px solid #1a1a1e; font-size:11px; letter-spacing:2px; color:#6b6458;
+  background:linear-gradient(to bottom,#111114,#0a0a0c);
+}
+#top .room { color:#b6a98d; font-size:12.5px; letter-spacing:3px; }
+#top .dot { color:#7a8a6a; margin-right:4px; }
+
+#log { flex:1; overflow-y:auto; padding:20px 20px 8px; font-size:14px; line-height:2.05; }
+.l { margin-bottom:16px; opacity:0; animation:fin .3s forwards; }
+@keyframes fin { to { opacity:1; } }
+.l .who { display:block; font-size:10px; letter-spacing:2px; color:#5a5448; margin-bottom:3px; }
+.l.el .who { color:#8a7f66; }
+.l.el .txt { color:#e6dfd0; }
+.l.me { text-align:right; }
+.l.me .who { color:#4a5560; }
+.l.me .txt { color:#9fb4c4; }
+.l.sys .txt { color:#6a6458; font-size:12px; letter-spacing:1px; }
+.l.omen .txt { color:#c08a72; }
+.l.small .txt { font-size:12.5px; color:#8c8578; }
+.cur { display:inline-block; width:7px; height:14px; background:#b6a98d; vertical-align:-2px; animation:blink .9s infinite; }
+@keyframes blink { 0%,60%{opacity:1} 70%,100%{opacity:.15} }
+
+#acts { flex-shrink:0; padding:10px 16px 16px; display:flex; flex-direction:column; gap:8px; max-height:38%; overflow-y:auto; }
+.btn {
+  padding:12px 14px; background:#111114; border:1px solid #2a2a30; color:#c9c2b4;
+  font-family:inherit; font-size:13.5px; letter-spacing:1px; border-radius:3px; text-align:left;
+}
+.btn:active { background:#c9c2b4; color:#0a0a0c; }
+.btn.q { color:#a89c82; border-color:#3a352a; }
+.btn.warn { color:#c08a72; border-color:#4a2f28; }
+.btn.ghost { color:#6a6458; border-color:#22222a; font-size:12px; }
+
+#nameBox { display:flex; gap:8px; }
+#nameIn {
+  flex:1; padding:12px 14px; background:#111114; border:1px solid #2a2a30; color:#e6dfd0;
+  font-family:inherit; font-size:14px; border-radius:3px; outline:none; letter-spacing:2px;
+}
+#nameBox .btn { flex:0 0 30%; text-align:center; }
+
+#face { position:fixed; inset:0; background:#000; z-index:100; }
+#face canvas { width:100%; height:100%; display:block; }
+.hidden { display:none !important; }
+
+#end {
+  position:fixed; inset:0; z-index:120; background:#07070a; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; padding:26px; text-align:center; overflow-y:auto;
+}
+#end h2 { font-size:14px; letter-spacing:6px; color:#b6a98d; margin-bottom:8px; }
+#end .sub { font-size:10px; letter-spacing:3px; color:#4a453c; margin-bottom:22px; }
+#rec { width:100%; max-width:360px; margin-bottom:20px; }
+#rec .row { display:flex; justify-content:space-between; font-size:12px; padding:8px 2px; border-bottom:1px solid #17171c; }
+#rec .row span:first-child { color:#5a5448; }
+#rec .row span:last-child { color:#c9c2b4; font-family:"Courier New",monospace; }
+#end .line { font-size:12.5px; line-height:2.1; color:#8c8578; margin-bottom:6px; }
+#end .hl { color:#c08a72; }
+#end .again { margin-top:22px; padding:10px 22px; background:transparent; border:1px solid #2a2a30; color:#a89c82; font-family:inherit; font-size:12px; letter-spacing:2px; }
+
+#start {
+  position:fixed; inset:0; z-index:200; background:#0a0a0c; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; padding:32px; text-align:center;
+}
+#start h1 { font-size:15px; letter-spacing:9px; color:#b6a98d; margin-bottom:6px; }
+#start .no { font-size:34px; letter-spacing:6px; color:#3a362e; margin-bottom:22px; font-family:"Courier New",monospace; }
+#start .s { font-size:11px; color:#4a453c; line-height:2.1; letter-spacing:1px; margin-bottom:26px; }
+#start .s b { color:#7a7060; font-weight:normal; }
+#startBtn { padding:12px 28px; background:transparent; border:1px solid #3a352a; color:#b6a98d; font-family:inherit; font-size:13px; letter-spacing:4px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="top">
+    <span class="room">1207</span>
+    <span><span class="dot">●</span>客房服务 · 已连接</span>
+  </div>
+  <div id="log"></div>
+  <div id="acts"></div>
+</div>
+
+<div id="face" class="hidden"><canvas id="fcv"></canvas></div>
+
+<div id="end" class="hidden">
+  <h2>服 务 记 录</h2>
+  <div class="sub">ROOM 1207 · 已归档</div>
+  <div id="rec"></div>
+  <div id="endTail"></div>
+  <button class="again" onclick="location.reload()">重新入住</button>
+</div>
+
+<div id="start">
+  <h1>客 房 服 务</h1>
+  <div class="no">1207</div>
+  <div class="s">
+    您住进了一间不记得订过的房间。<br>
+    房里的服务已经为您准备好了。<br><br>
+    <b>他很有礼貌。</b>
+  </div>
+  <button id="startBtn">开 始 入 住</button>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var logEl = document.getElementById("log");
+  var actsEl = document.getElementById("acts");
+  var faceEl = document.getElementById("face");
+  var fcv = document.getElementById("fcv");
+  var fctx = fcv.getContext("2d");
+  var endEl = document.getElementById("end");
+
+  // ================= 监视数据（全部真实可采集）=================
+  var W = {
+    started: Date.now(),
+    taps: 0,
+    awayCount: 0,
+    awayTotal: 0,
+    hiddenAt: 0,
+    justReturned: 0,
+    orientChanges: 0,
+    lastOrient: (window.innerHeight > window.innerWidth) ? "p" : "l",
+    returnedFlag: false
+  };
+
+  document.addEventListener("pointerdown", function () {
+    W.taps++;
+  });
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      W.hiddenAt = Date.now();
+    } else if (W.hiddenAt) {
+      var d = Date.now() - W.hiddenAt;
+      if (d > 900) {                 // 短于一秒不算离开
+        W.awayCount++;
+        W.awayTotal += d;
+        W.returnedFlag = true;
+      }
+      W.hiddenAt = 0;
+    }
+  });
+  window.addEventListener("resize", function () {
+    var o = (window.innerHeight > window.innerWidth) ? "p" : "l";
+    if (o !== W.lastOrient) { W.lastOrient = o; W.orientChanges++; }
+  });
+
+  function elapsed() { return Math.round((Date.now() - W.started) / 1000); }
+  function mmss(s) {
+    var m = Math.floor(s / 60), r = s % 60;
+    if (m <= 0) return r + " 秒";
+    return m + " 分 " + r + " 秒";
+  }
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function clockNow() {
+    var d = new Date();
+    return pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  // ================= 声音 =================
+  var AC = null;
+  function initAudio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } } }
+  function tone(f, d, type, g, sweepTo, delay) {
+    if (!AC) return;
+    var o = AC.createOscillator(), gn = AC.createGain();
+    o.type = type || "sine";
+    var t = AC.currentTime + (delay || 0);
+    o.frequency.setValueAtTime(f, t);
+    if (sweepTo) o.frequency.exponentialRampToValueAtTime(sweepTo, t + d);
+    gn.gain.setValueAtTime(g || 0.04, t);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(gn); gn.connect(AC.destination);
+    o.start(t); o.stop(t + d + 0.05);
+  }
+  function chime() {     // 服务铃：水晶音
+    tone(1760, 0.7, "sine", 0.045);
+    tone(2640, 0.5, "sine", 0.02, null, 0.02);
+    tone(880, 0.9, "sine", 0.025, null, 0.04);
+  }
+  function softNoise(d, vol, hp) {
+    if (!AC) return;
+    var len = Math.floor(AC.sampleRate * d);
+    var buf = AC.createBuffer(1, len, AC.sampleRate);
+    var ch = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (vol || 0.1);
+    var src = AC.createBufferSource(); src.buffer = buf;
+    var f = AC.createBiquadFilter(); f.type = "highpass"; f.frequency.value = hp || 1000;
+    var g = AC.createGain(); g.gain.value = 0.05;
+    src.connect(f); f.connect(g); g.connect(AC.destination);
+    src.start();
+  }
+  var droneNode = null;
+  function startDrone() {
+    if (!AC || droneNode) return;
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = "sine"; o.frequency.value = 48;
+    g.gain.value = 0.016;
+    o.connect(g); g.connect(AC.destination);
+    o.start();
+    droneNode = o;
+  }
+  function boom() {
+    if (!AC) return;
+    var t = AC.currentTime;
+    var lo = AC.createOscillator(), lg = AC.createGain();
+    lo.type = "sine";
+    lo.frequency.setValueAtTime(70, t);
+    lo.frequency.exponentialRampToValueAtTime(28, t + 1.6);
+    lg.gain.setValueAtTime(0.2, t);
+    lg.gain.exponentialRampToValueAtTime(0.0001, t + 1.8);
+    lo.connect(lg); lg.connect(AC.destination);
+    lo.start(t); lo.stop(t + 1.85);
+    softNoise(0.8, 0.18, 700);
+  }
+  function buzz(p) { if (navigator.vibrate) { try { navigator.vibrate(p || 50); } catch (e) {} } }
+
+  // ================= 文字 =================
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function addLine(who, text, cls) {
+    var d = document.createElement("div");
+    d.className = "l " + (cls || "");
+    var w = document.createElement("span");
+    w.className = "who";
+    w.textContent = who || "";
+    var t = document.createElement("span");
+    t.className = "txt";
+    t.textContent = text;
+    if (who) d.appendChild(w);
+    d.appendChild(t);
+    logEl.appendChild(d);
+    logEl.scrollTop = logEl.scrollHeight;
+    return t;
+  }
+
+  // 打字机（绅士说话慢）
+  async function say(text, cls, speed) {
+    var t = addLine("艾略特", "", "el " + (cls || ""));
+    var cur = document.createElement("span");
+    cur.className = "cur";
+    t.appendChild(cur);
+    var sp = speed || 46;
+    for (var i = 0; i < text.length; i++) {
+      t.insertBefore(document.createTextNode(text.charAt(i)), cur);
+      logEl.scrollTop = logEl.scrollHeight;
+      if (i % 3 === 0) tone(2200 + Math.random() * 300, 0.008, "sine", 0.006);
+      await wait(sp);
+    }
+    cur.remove();
+    return t;
+  }
+
+  async function meSay(text) {
+    addLine("您", text, "me");
+    tone(300, 0.04, "square", 0.02);
+    await wait(260);
+  }
+
+  async function sysSay(text, cls) {
+    addLine("", text, "sys " + (cls || ""));
+    await wait(420);
+  }
+
+  function choose(list) {
+    return new Promise(function (resolve) {
+      actsEl.innerHTML = "";
+      list.forEach(function (item) {
+        var b = document.createElement("button");
+        b.className = "btn " + (item.style || "");
+        b.textContent = item.text;
+        b.onclick = function () {
+          actsEl.innerHTML = "";
+          tone(560, 0.05, "sine", 0.03);
+          resolve(item.value);
+        };
+        actsEl.appendChild(b);
+      });
+    });
+  }
+
+  // 输入名字
+  function askName() {
+    return new Promise(function (resolve) {
+      actsEl.innerHTML = "";
+      var box = document.createElement("div");
+      box.id = "nameBox";
+      var inp = document.createElement("input");
+      inp.id = "nameIn";
+      inp.type = "text";
+      inp.maxLength = 12;
+      inp.placeholder = "写下您的名字";
+      var ok = document.createElement("button");
+      ok.className = "btn";
+      ok.textContent = "确认";
+      box.appendChild(inp);
+      box.appendChild(ok);
+      actsEl.appendChild(box);
+
+      var refuse = document.createElement("button");
+      refuse.className = "btn ghost";
+      refuse.textContent = "不告诉你";
+      actsEl.appendChild(refuse);
+
+      function done(v) {
+        actsEl.innerHTML = "";
+        resolve(v);
+      }
+      ok.onclick = function () { done(inp.value.trim() || "（没有写）"); };
+      inp.addEventListener("keydown", function (e) { if (e.key === "Enter") done(inp.value.trim() || "（没有写）"); });
+      refuse.onclick = function () { done(null); };
+    });
+  }
+
+  // ================= 突脸（绅士版：慢浮现，突然睁眼）=================
+  var faceRAF = null, facePhase = 0, faceT0 = 0;
+
+  function resizeFace() { fcv.width = window.innerWidth; fcv.height = window.innerHeight; }
+
+  function faceLoop() {
+    var w = fcv.width, h = fcv.height;
+    var el = (Date.now() - faceT0) / 1000;
+
+    fctx.fillStyle = "#020203";
+    fctx.fillRect(0, 0, w, h);
+
+    // 慢速浮现 → 突然放大
+    var grow = 0.55 + Math.min(0.45, el * 0.045);
+    var jolt = 0;
+    if (facePhase === 1) {
+      // 睁眼瞬间：猛地放大 + 抖动
+      var k = Math.min(1, (el - 2.6) * 9);
+      grow = 0.55 + 0.45 * (2.6 * 0.045) + k * 0.55;
+      jolt = k * w * 0.012;
+    }
+    var cx = w / 2 + (Math.random() - 0.5) * jolt;
+    var cy = h / 2 + (Math.random() - 0.5) * jolt;
+    var rx = w * 0.30 * grow;
+    var ry = h * 0.28 * grow;
+
+    // 脸
+    var g = fctx.createRadialGradient(cx - rx * 0.2, cy - ry * 0.25, rx * 0.05, cx, cy, rx * 1.25);
+    g.addColorStop(0, "#d8cfc2");
+    g.addColorStop(0.55, "#a89b8b");
+    g.addColorStop(1, "#0d0b09");
+    fctx.fillStyle = g;
+    fctx.beginPath(); fctx.ellipse(cx, cy, rx, ry, 0, 0, 7); fctx.fill();
+
+    var er = rx * 0.2;
+    if (facePhase === 0) {
+      // 闭眼：两道弧线
+      fctx.strokeStyle = "#141010";
+      fctx.lineWidth = Math.max(2, rx * 0.035);
+      [-1, 1].forEach(function (s) {
+        fctx.beginPath();
+        fctx.arc(cx + s * rx * 0.36, cy - ry * 0.12, er, 0.25, Math.PI - 0.25);
+        fctx.stroke();
+      });
+    } else {
+      // 睁眼：纯黑的洞
+      [-1, 1].forEach(function (s) {
+        var ex = cx + s * rx * 0.36, ey = cy - ry * 0.12;
+        var gg = fctx.createRadialGradient(ex, ey, er * 0.03, ex, ey, er);
+        gg.addColorStop(0, "#000");
+        gg.addColorStop(0.6, "#070505");
+        gg.addColorStop(1, "rgba(30,16,14,0)");
+        fctx.fillStyle = gg;
+        fctx.beginPath(); fctx.ellipse(ex, ey, er, er * 1.25, 0, 0, 7); fctx.fill();
+      });
+    }
+
+    // 微笑
+    fctx.strokeStyle = facePhase === 0 ? "#241a18" : "#3a1010";
+    fctx.lineWidth = Math.max(2, rx * 0.028);
+    fctx.beginPath();
+    fctx.arc(cx, cy + ry * 0.10, rx * 0.34, 0.35, Math.PI - 0.35);
+    fctx.stroke();
+
+    // 暗角
+    var vg = fctx.createRadialGradient(cx, cy, rx * 0.9, cx, cy, rx * 2.2);
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(0,0,0,1)");
+    fctx.fillStyle = vg;
+    fctx.fillRect(0, 0, w, h);
+
+    // 颗粒
+    for (var n = 0; n < 500; n++) {
+      fctx.fillStyle = "rgba(255,255,255," + (Math.random() * 0.03) + ")";
+      fctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+
+    faceRAF = requestAnimationFrame(faceLoop);
+  }
+
+  async function gentleScare() {
+    resizeFace();
+    faceEl.classList.remove("hidden");
+    facePhase = 0;
+    faceT0 = Date.now();
+    if (!faceRAF) faceRAF = requestAnimationFrame(faceLoop);
+    softNoise(2.4, 0.10, 600);       // 很轻的呼吸声
+    await wait(2600);                // 慢慢浮现，两秒半
+
+    facePhase = 1;
+    boom();
+    chime();
+    buzz([0, 120, 60, 240, 80, 340]);
+    await wait(1100);
+
+    faceEl.classList.add("hidden");
+    await wait(700);
+  }
+
+  // ================= 剧情 =================
+  var name = null;
+
+  async function main() {
+    initAudio();
+    startDrone();
+    W.started = Date.now();
+    W.taps = 0;
+
+    // ---------- 第一幕：欢迎 ----------
+    await sysSay("客房服务 · 连接已建立");
+    await wait(700);
+    chime();
+    await say("晚上好。");
+    await wait(600);
+    await say("欢迎入住 1207。我是这一层的礼宾服务。您可以叫我艾略特。");
+    await wait(500);
+    await say("在您休息之前，有三件小事需要确认——水温，窗帘，和夜灯。");
+
+    var a1 = await choose([
+      { text: "水温可以。", value: "w" },
+      { text: "你是谁？这间房我没订。", value: "q" },
+      { text: "我现在就退房。", value: "out" }
+    ]);
+
+    await meSay(a1 === "w" ? "水温可以。" : (a1 === "q" ? "你是谁？这间房我没订。" : "我现在就退房。"));
+    await wait(400);
+
+    if (a1 === "q") {
+      await say("一个提供服务的声音。仅此而已。");
+      await wait(400);
+      await say("您知道得越少，会睡得越好。这是经验。");
+    } else if (a1 === "out") {
+      await say("当然可以。退房手续在每天早上七点开始办理。");
+      await wait(500);
+      await say("今晚，请您先休息。");
+    } else {
+      await say("好的。我把水温记在三十八度。");
+      await wait(300);
+      await say("您的习惯，我记性一向不错。");
+    }
+
+    // ---------- 第二幕：箱子 ----------
+    await wait(900);
+    await say("另外，您进门的时候带了一只箱子。");
+    await say("我已经替您放在了衣柜的左边。");
+
+    var a2 = await choose([
+      { text: "我没有带箱子。", value: "nobox", style: "warn" },
+      { text: "……谢谢。", value: "thx" }
+    ]);
+    await meSay(a2 === "nobox" ? "我没有带箱子。" : "……谢谢。");
+    await wait(400);
+
+    if (a2 === "nobox") {
+      await say("有的。");
+      await wait(400);
+      await say("深灰色，硬壳，右下的轮子有一点响。");
+      await wait(500);
+      await say("您拖它经过地毯的时候，声音停在第三块花纹上。那块花纹下面，地板是空的。");
+    } else {
+      await say("不客气。这是我的工作。");
+      await wait(400);
+      await say("箱子有点重。我提的时候，里面的东西滑了一下。");
+      await wait(400);
+      await say("听起来像是有什么在里面翻了个身。");
+    }
+
+    await wait(900);
+    var a3 = await choose([
+      { text: "你在看我？", value: "watch", style: "warn" },
+      { text: "箱子我还给你，我不需要。", value: "give" }
+    ]);
+    await meSay(a3 === "watch" ? "你在看我？" : "箱子我还给你，我不需要。");
+    await wait(400);
+
+    if (a3 === "watch") {
+      await say("我在服务您。");
+      await wait(500);
+      await say("看，是服务的一部分。就像水温和窗帘。");
+    } else {
+      await say("当然。我这就把它拿走。");
+      await wait(600);
+      await say("……只是，箱子比刚才重了一些。");
+    }
+
+    // ---------- 第三幕：记录（真实数据）----------
+    await wait(1000);
+    await say("说到记录。", "omen");
+    await wait(500);
+    await say("现在是 " + clockNow() + "。");
+    await wait(400);
+    await say("从您坐进这间房，到现在，过了 " + mmss(elapsed()) + "。");
+    await wait(500);
+
+    if (W.taps > 0) {
+      await say("这期间您在屏幕上碰了 " + W.taps + " 次。");
+      await say("每一次我都听见了。像有人敲墙。");
+    }
+
+    await wait(600);
+    if (W.awayCount > 0) {
+      await say("中间您离开过一次，一共 " + mmss(W.awayTotal) + "。");
+      await wait(400);
+      await say("那段时间，房间里只有我。灯我没有关。");
+    } else {
+      await say("您还没有离开过。这很好。");
+      await wait(400);
+      await say("大部分住客在第两分钟就会切出去。切出去的时候，房间还在。");
+    }
+
+    if (W.orientChanges > 0) {
+      await wait(400);
+      await say("您把屏幕转过一次方向。");
+      await say("是想看得更清楚一些吗。");
+    }
+
+    await wait(800);
+    await say("请不要误会。这不是监视。", "omen");
+    await wait(400);
+    await say("是记录。好的服务，全都建立在记录上。");
+
+    // ---------- 第四幕：服务过头 ----------
+    await wait(1100);
+    await say("还差最后一件事。", "omen");
+    await wait(500);
+    chime();
+    await say("门，我已经替您锁上了。");
+    await wait(600);
+    await say("这一层住的人不多。为了您的安全。");
+
+    var a4 = await choose([
+      { text: "把门打开。现在。", value: "open", style: "warn" },
+      { text: "我要叫警察。", value: "police", style: "warn" },
+      { text: "你在哪里？", value: "where" }
+    ]);
+
+    if (a4 === "open") {
+      await meSay("把门打开。现在。");
+      await say("抱歉，这一项我做不了。");
+      await wait(400);
+      await say("钥匙在另一只手上。那只手今晚不归我。");
+    } else if (a4 === "police") {
+      await meSay("我要叫警察。");
+      await say("已经通知了。");
+      await wait(500);
+      await say("他们会在合适的时候到。");
+      await wait(400);
+      await say("这个“合适的时候”，不由您决定，也不由我决定。");
+    } else {
+      await meSay("你在哪里？");
+      await say("很近。", "omen");
+      await wait(600);
+      await say("近到您不需要抬头。");
+    }
+
+    // ---------- 第五幕：登记 ----------
+    await wait(1200);
+    await say("最后一件事，是入住登记。");
+    await wait(500);
+    await say("请告诉我，您的名字。");
+    await wait(600);
+
+    var nm = await askName();
+    if (nm === null) {
+      await meSay("不告诉你。");
+      await wait(500);
+      await say("没关系。");
+      await wait(500);
+      await say("名字我已经有了。", "omen");
+      await wait(400);
+      await say("在您进门的那一刻，我就有了。");
+    } else {
+      name = nm;
+      await meSay(nm);
+      await wait(500);
+      await say("谢谢您，" + nm + "。");
+      await wait(600);
+      await say("登记完成。");
+      await wait(400);
+      await say("从现在起，这间房的记录上，有您的名字了。", "omen");
+    }
+
+    // ---------- 第六幕：终 ----------
+    await wait(1100);
+    await say("服务到此结束。");
+    await wait(600);
+    await say("最后一项，请您配合一下。");
+    await wait(700);
+    await say("抬起头。", "omen", 120);
+    await wait(900);
+
+    await gentleScare();
+
+    // ---------- 结局 ----------
+    ending();
+  }
+
+  // ================= 结局 =================
+  function ending() {
+    faceEl.classList.add("hidden");
+    var sec = elapsed();
+    var rows = [
+      ["房间", "1207"],
+      ["入住", clockNow()],
+      ["停留时长", mmss(sec)],
+      ["离开次数", W.awayCount + " 次"],
+      ["离开总时长", W.awayTotal > 0 ? mmss(W.awayTotal) : "0 秒"],
+      ["屏幕触碰", W.taps + " 次"],
+      ["屏幕方向变化", W.orientChanges + " 次"],
+      ["登记姓名", name || "（未提供）"]
+    ];
+    function esc(x) {
+      return String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    var html = "";
+    rows.forEach(function (r) {
+      html += "<div class='row'><span>" + esc(r[0]) + "</span><span>" + esc(r[1]) + "</span></div>";
+    });
+    document.getElementById("rec").innerHTML = html;
+
+    var tail = document.getElementById("endTail");
+    tail.innerHTML =
+      "<div class='line'>以上记录已归档。</div>" +
+      "<div class='line hl'>下一项服务：07:30　早餐</div>" +
+      "<div class='line' style='margin-top:12px'>请勿退房。</div>" +
+      "<div class='line' style='margin-top:16px;color:#5a5448;font-size:11px'>欢迎下次入住。</div>";
+
+    endEl.classList.remove("hidden");
+    boom();
+  }
+
+  // ================= 启动 =================
+  document.getElementById("startBtn").addEventListener("click", function () {
+    document.getElementById("start").classList.add("hidden");
+    main().catch(function (e) {
+      addLine("", "系统错误：" + e.message, "sys");
+    });
+  });
+
+})();
+</script>
+
+</body>
+</html>
