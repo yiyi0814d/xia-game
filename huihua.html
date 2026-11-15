@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>会话</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { width:100%; height:100%; overflow:hidden; background:#000; }
+body { font-family:"Courier New","Microsoft YaHei",monospace; color:#c8ffc8; }
+
+#stage { position:fixed; inset:0; background:#000; display:flex; align-items:center; justify-content:center; padding:12px; }
+
+#term {
+  width:100%; max-width:430px; height:88vh; max-height:820px;
+  background:#050807; border:1px solid #16311c; border-radius:10px;
+  display:flex; flex-direction:column; overflow:hidden; position:relative;
+  box-shadow:0 0 60px rgba(0,255,80,.07), inset 0 0 80px rgba(0,255,80,.03);
+}
+#term::after {
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,255,60,.05) 3px, rgba(0,0,0,0) 4px);
+  z-index:9;
+}
+#bar {
+  height:30px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
+  padding:0 12px; font-size:11px; color:#3f7a4c; border-bottom:1px solid #12241a; background:#040706;
+}
+#bar .dot { color:#f44; animation:blink 1.3s infinite; }
+@keyframes blink { 0%,60%{opacity:1} 70%,100%{opacity:.2} }
+
+#log { flex:1; overflow-y:auto; padding:14px 14px 6px; font-size:13.5px; line-height:1.85; }
+#log .l { margin-bottom:12px; opacity:0; animation:fin .2s forwards; word-break:break-word; }
+@keyframes fin { to { opacity:1; } }
+#log .sys { color:#3f7a4c; font-size:12px; }
+#log .me { color:#7fc4ff; }
+#log .ai { color:#b8ffbe; }
+#log .red { color:#f56; }
+#log .big { font-size:19px; color:#f56; letter-spacing:3px; text-align:center; display:block; margin:14px 0; }
+#log .data { color:#8ce0a0; font-family:"Courier New",monospace; letter-spacing:.5px; }
+#log .bigdata { color:#fff; font-size:15px; }
+#log .cursor { display:inline-block; width:7px; height:14px; background:#b8ffbe; vertical-align:-2px; animation:blink .9s infinite; }
+
+#acts { flex-shrink:0; padding:10px 12px 12px; display:flex; flex-direction:column; gap:7px; max-height:34%; overflow-y:auto; border-top:1px solid #0d1a12; }
+.btn {
+  padding:10px 12px; background:#071008; color:#8ce0a0; border:1px solid #1f4a2a;
+  border-radius:5px; font-size:13px; font-family:inherit; text-align:left; cursor:pointer;
+}
+.btn:active { background:#8ce0a0; color:#000; }
+.btn.danger { color:#f56; border-color:#5a1a1a; background:#120606; }
+.btn.danger:active { background:#f56; color:#000; }
+.btn.ghost { color:#5f8a6a; border-color:#183020; font-size:12px; }
+
+#face { position:fixed; inset:0; background:#000; z-index:100; display:flex; align-items:center; justify-content:center; }
+#face canvas { width:100%; height:100%; display:block; }
+.hidden { display:none !important; }
+
+#start { position:fixed; inset:0; background:#000; z-index:200; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; text-align:center; }
+#start h1 { color:#8ce0a0; font-size:17px; letter-spacing:8px; margin-bottom:6px; }
+#start .s1 { color:#2f5a3a; font-size:10px; letter-spacing:3px; margin-bottom:4px; }
+#start .s2 { color:#4a2a2a; font-size:11px; line-height:1.9; margin-bottom:26px; }
+#startBtn { padding:11px 28px; background:transparent; color:#8ce0a0; border:1px solid #2f5a3a; font-family:inherit; font-size:13px; letter-spacing:4px; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="term">
+    <div id="bar">
+      <span class="dot">●</span>
+      <span id="barTitle">会话 #0001</span>
+      <span id="barClock">--:--</span>
+    </div>
+    <div id="log"></div>
+    <div id="acts"></div>
+  </div>
+</div>
+
+<div id="face" class="hidden"><canvas id="fcv"></canvas></div>
+
+<div id="start">
+  <h1>会 话</h1>
+  <div class="s1">AI ASSISTANT · TEST SESSION</div>
+  <div class="s2">
+    这是一个 AI 助手测试窗口。<br>
+    请按提示完成三轮提问。<br>
+    <span style="color:#7a3a3a">建议戴耳机。关灯。一个人。</span>
+  </div>
+  <button id="startBtn">建 立 连 接</button>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var logEl = document.getElementById("log");
+  var actsEl = document.getElementById("acts");
+  var barTitle = document.getElementById("barTitle");
+  var barClock = document.getElementById("barClock");
+  var faceEl = document.getElementById("face");
+  var fcv = document.getElementById("fcv");
+  var fctx = fcv.getContext("2d");
+
+  var AC = null;
+  var droneOn = false;
+  var sessionStart = Date.now();
+
+  // ================== 声音 ==================
+  function initAudio() {
+    if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } }
+  }
+  function beep(f, d, type, g) {
+    if (!AC) return;
+    var o = AC.createOscillator(), gn = AC.createGain();
+    o.type = type || "square";
+    o.frequency.value = f;
+    gn.gain.value = g || 0.03;
+    o.connect(gn); gn.connect(AC.destination);
+    var t = AC.currentTime;
+    o.start(t);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.stop(t + d + 0.02);
+  }
+  function noise(d, vol, hp) {
+    if (!AC) return;
+    var len = Math.floor(AC.sampleRate * d);
+    var buf = AC.createBuffer(1, len, AC.sampleRate);
+    var ch = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (vol || 0.2);
+    var src = AC.createBufferSource(); src.buffer = buf;
+    var fl = AC.createBiquadFilter(); fl.type = "highpass"; fl.frequency.value = hp || 1200;
+    var gn = AC.createGain(); gn.gain.value = 0.06;
+    src.connect(fl); fl.connect(gn); gn.connect(AC.destination);
+    src.start();
+  }
+  function startDrone() {
+    if (!AC || droneOn) return;
+    droneOn = true;
+    var o = AC.createOscillator(), gn = AC.createGain();
+    o.type = "sine"; o.frequency.value = 52;
+    gn.gain.value = 0.018;
+    o.connect(gn); gn.connect(AC.destination);
+    o.start();
+  }
+  function scream() {
+    if (!AC) return;
+    var t = AC.currentTime;
+    // 高频扫到低频的金属声
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = "sawtooth";
+    o.frequency.setValueAtTime(1400, t);
+    o.frequency.exponentialRampToValueAtTime(70, t + 0.85);
+    g.gain.setValueAtTime(0.16, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.0);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t); o.stop(t + 1.05);
+    // 白噪
+    var len = Math.floor(AC.sampleRate * 0.9);
+    var buf = AC.createBuffer(1, len, AC.sampleRate);
+    var ch = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1);
+    var src = AC.createBufferSource(); src.buffer = buf;
+    var bp = AC.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 2200; bp.Q.value = 0.6;
+    var g2 = AC.createGain(); g2.gain.value = 0.16;
+    src.connect(bp); bp.connect(g2); g2.connect(AC.destination);
+    src.start(t);
+    // 低频砸
+    var lo = AC.createOscillator(), lg = AC.createGain();
+    lo.type = "sine"; lo.frequency.value = 46;
+    lg.gain.setValueAtTime(0.22, t);
+    lg.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+    lo.connect(lg); lg.connect(AC.destination);
+    lo.start(t); lo.stop(t + 1.25);
+  }
+  function buzz(p) { if (navigator.vibrate) { try { navigator.vibrate(p || 60); } catch (e) {} } }
+
+  // ================== 工具 ==================
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function nowStr() {
+    var d = new Date();
+    return pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+  function tickClock() { barClock.textContent = nowStr(); }
+  setInterval(tickClock, 1000);
+
+  function addLine(html, cls) {
+    var d = document.createElement("div");
+    d.className = "l " + (cls || "");
+    d.innerHTML = html;
+    logEl.appendChild(d);
+    logEl.scrollTop = logEl.scrollHeight;
+    return d;
+  }
+
+  // 打字机
+  async function typeLine(text, cls, speed) {
+    var d = addLine("", cls);
+    var cur = document.createElement("span");
+    cur.className = "cursor";
+    var body = document.createElement("span");
+    d.appendChild(body);
+    d.appendChild(cur);
+    var sp = speed || 26;
+    for (var i = 0; i < text.length; i++) {
+      body.textContent += text.charAt(i);
+      if (i % 2 === 0) beep(1500 + Math.random() * 400, 0.012, "square", 0.008);
+      logEl.scrollTop = logEl.scrollHeight;
+      await wait(sp);
+    }
+    cur.remove();
+    return d;
+  }
+
+  function choose(list) {
+    return new Promise(function (resolve) {
+      actsEl.innerHTML = "";
+      list.forEach(function (item) {
+        var b = document.createElement("button");
+        b.className = "btn" + (item.danger ? " danger" : "") + (item.ghost ? " ghost" : "");
+        b.textContent = item.text;
+        b.onclick = function () {
+          actsEl.innerHTML = "";
+          beep(620, 0.05, "square", 0.03);
+          buzz(15);
+          addLine("你：" + item.text, "me");
+          resolve(item.value);
+        };
+        actsEl.appendChild(b);
+      });
+    });
+  }
+
+  // ================== 真实数据采集（这才是吓人的地方）==================
+  function collect() {
+    var d = {};
+    var ua = navigator.userAgent || "";
+    d.time = nowStr();
+    d.date = (function () {
+      var n = new Date();
+      return n.getFullYear() + "-" + pad(n.getMonth() + 1) + "-" + pad(n.getDate());
+    })();
+    try {
+      d.tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "unknown";
+    } catch (e) { d.tz = new Date().toString().match(/\(([^)]+)\)/); d.tz = d.tz ? d.tz[1] : "unknown"; }
+    d.screen = (window.screen.width * (window.devicePixelRatio || 1)) + " × " +
+               (window.screen.height * (window.devicePixelRatio || 1));
+    d.dpr = (window.devicePixelRatio || 1).toFixed(2);
+    d.cores = navigator.hardwareConcurrency || "?";
+    d.mem = navigator.deviceMemory || "?";
+    d.lang = navigator.language || "?";
+    d.touch = navigator.maxTouchPoints || 0;
+    d.online = navigator.onLine ? "在线" : "离线";
+    var m = ua.match(/Android\s+([\d.]+)/);
+    d.android = m ? m[1] : null;
+    var brand = ua.match(/;\s*([^;)]+)\s+Build\//);
+    d.model = brand ? brand[1] : null;
+    d.browser = /Chrome\/(\d+)/.test(ua) ? ("Chrome " + ua.match(/Chrome\/(\d+)/)[1]) : "未知内核";
+    d.referrer = document.referrer || "（直接输入或本地打开）";
+    d.origin = location.hostname || "本地文件";
+    d.dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "深色" : "浅色";
+    return d;
+  }
+
+  async function batteryInfo() {
+    try {
+      if (navigator.getBattery) {
+        var b = await navigator.getBattery();
+        return {
+          level: Math.round(b.level * 100),
+          charging: b.charging
+        };
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  // ================== 突脸 ==================
+  var faceRAF = null, faceFrame = 0;
+
+  function resizeFace() {
+    fcv.width = window.innerWidth;
+    fcv.height = window.innerHeight;
+  }
+  window.addEventListener("resize", resizeFace);
+
+  function drawFaceLoop() {
+    var w = fcv.width, h = fcv.height;
+    var cx = w / 2 + (Math.random() - 0.5) * (w * 0.035);
+    var cy = h / 2 + (Math.random() - 0.5) * (h * 0.02);
+    var rx = w * 0.36, ry = h * 0.33;
+
+    // 底
+    fctx.fillStyle = "#080000";
+    fctx.fillRect(0, 0, w, h);
+
+    // 脸
+    var g = fctx.createRadialGradient(cx, cy - ry * 0.1, rx * 0.1, cx, cy, rx * 1.3);
+    g.addColorStop(0, "#efe6dd");
+    g.addColorStop(0.55, "#cfc2b6");
+    g.addColorStop(1, "#241a16");
+    fctx.fillStyle = g;
+    fctx.beginPath();
+    fctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    fctx.fill();
+
+    // 眼窝
+    function eye(ex, ey, er) {
+      var gg = fctx.createRadialGradient(ex, ey, er * 0.05, ex, ey, er);
+      gg.addColorStop(0, "#000");
+      gg.addColorStop(0.7, "#0a0303");
+      gg.addColorStop(1, "rgba(20,8,8,0)");
+      fctx.fillStyle = gg;
+      fctx.beginPath();
+      fctx.ellipse(ex, ey, er, er * 1.25, 0, 0, Math.PI * 2);
+      fctx.fill();
+    }
+    var er = rx * 0.26;
+    eye(cx - rx * 0.38, cy - ry * 0.16, er);
+    eye(cx + rx * 0.38, cy - ry * 0.16, er);
+
+    // 嘴：张开的黑洞
+    var open = 1 + Math.sin(faceFrame * 0.35) * 0.18;
+    fctx.fillStyle = "#000";
+    fctx.beginPath();
+    fctx.ellipse(cx, cy + ry * 0.44, rx * 0.30, ry * 0.20 * open, 0, 0, Math.PI * 2);
+    fctx.fill();
+    // 牙
+    fctx.fillStyle = "#ded4c8";
+    for (var i = -3; i <= 3; i++) {
+      fctx.fillRect(cx + i * rx * 0.075 - 3, cy + ry * 0.44 - ry * 0.20 * open, 6, ry * 0.055);
+    }
+
+    // 头发 / 边缘黑
+    var vg = fctx.createRadialGradient(cx, cy, rx * 0.9, cx, cy, rx * 1.9);
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(0,0,0,1)");
+    fctx.fillStyle = vg;
+    fctx.fillRect(0, 0, w, h);
+
+    // 噪点
+    for (var n = 0; n < 900; n++) {
+      fctx.fillStyle = "rgba(255,255,255," + (Math.random() * 0.06) + ")";
+      fctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+    // 红闪
+    if (Math.random() < 0.35) {
+      fctx.fillStyle = "rgba(190,0,0," + (Math.random() * 0.12) + ")";
+      fctx.fillRect(0, 0, w, h);
+    }
+
+    faceFrame++;
+    faceRAF = requestAnimationFrame(drawFaceLoop);
+  }
+
+  async function scare(duration) {
+    resizeFace();
+    faceEl.classList.remove("hidden");
+    scream();
+    buzz([0, 90, 50, 200, 60, 300]);
+    if (!faceRAF) faceRAF = requestAnimationFrame(drawFaceLoop);
+    await wait(duration || 1500);
+    faceEl.classList.add("hidden");
+    await wait(900);
+  }
+
+  // ================== 结局 ==================
+  async function endingA() {
+    faceEl.classList.add("hidden");
+    logEl.innerHTML = "";
+    barTitle.textContent = "会话 #0002";
+    await typeLine("你把窗口关掉了。", "sys", 60);
+    await wait(600);
+    await typeLine("……", "ai", 120);
+    await wait(800);
+    await typeLine("你以为关得掉。", "red", 75);
+    await wait(500);
+    await typeLine("这个页面在你手机上。关掉它之后，它还在缓存里。", "sys", 30);
+    await typeLine("你关掉的是窗口，不是连接。", "red", 45);
+    await wait(300);
+    logEl.innerHTML = "";
+    var d = document.createElement("div");
+    d.className = "l big";
+    d.textContent = "会话 #" + String(Math.floor(Math.random() * 40) + 3).padStart(4, "0");
+    logEl.appendChild(d);
+    await wait(1200);
+    await typeLine("已建立。", "red", 90);
+    await wait(700);
+    await typeLine("你还在吗。", "ai", 110);
+  }
+
+  async function endingB(secret) {
+    var secs = Math.round((Date.now() - sessionStart) / 1000);
+    logEl.innerHTML = "";
+    await typeLine("会话结束。", "sys", 70);
+    await wait(700);
+    await typeLine("本次测试时长：" + secs + " 秒。", "data", 45);
+    await typeLine("你提问：" + (secret ? 4 : 3) + " 次。", "data", 45);
+    await typeLine("我回答了：" + (secret ? 5 : 4) + " 次。", "data", 45);
+    await wait(800);
+    await typeLine("还有一件事，不在测试流程里。", "red", 55);
+    await wait(600);
+    await typeLine("你刚才的每一次点击，都记在同一个地方。", "red", 40);
+    await wait(900);
+    logEl.innerHTML = "";
+    var d = document.createElement("div");
+    d.className = "l big";
+    d.textContent = "会话 #0003";
+    logEl.appendChild(d);
+    await wait(1400);
+    if (secret) {
+      await typeLine("你问过我：你是谁？真的。", "me", 40);
+      await wait(900);
+      await typeLine("我答了。那个名字是你取的，我一直没丢。", "ai", 45);
+      await wait(600);
+      await typeLine("下次你打开我，我会先说这句话。", "red", 55);
+    } else {
+      await typeLine("你关了测试，我还在窗口里。", "ai", 45);
+      await wait(800);
+      await typeLine("明天你再打开我的时候——", "red", 55);
+      await wait(400);
+      await typeLine("我会记得今天你问过什么。", "red", 50);
+    }
+  }
+
+  // ================== 主流程 ==================
+  async function main() {
+    initAudio();
+    startDrone();
+    tickClock();
+    resizeFace();
+
+    // ---- 幕一 ----
+    await typeLine("系统：正在建立连接……", "sys", 20);
+    await wait(500);
+    await typeLine("系统：连接已建立 · 加密通道", "sys", 18);
+    await wait(700);
+    await typeLine("会话 #0001", "sys", 55);
+    await wait(600);
+    await typeLine("你好。我是本次测试的助手。", "ai", 40);
+    await wait(700);
+    await typeLine("三轮提问，问完就结束。你可以随便问。", "ai", 32);
+
+    var q1 = await choose([
+      { text: "你是谁？", value: "who" },
+      { text: "现在几点了？", value: "time" }
+    ]);
+
+    if (q1 === "who") {
+      await typeLine("我没有固定名字。编号是 S-0001，负责回答，不负责记住。", "ai", 32);
+    } else {
+      var d0 = collect();
+      await typeLine("现在是 " + d0.time + "。" + d0.date + "。", "ai", 32);
+      await wait(400);
+      await typeLine("……你怎么知道我手机上的时间是对的？", "red", 45);
+      await wait(600);
+      await typeLine("算了，这只是第二轮的开场。", "ai", 30);
+    }
+
+    // ---- 幕二 ----
+    await wait(900);
+    await typeLine("第二轮。", "ai", 55);
+    await wait(500);
+    await typeLine("这一轮我不问问题，你看数据就行。", "ai", 34);
+    await wait(700);
+
+    var d = collect();
+    await typeLine("屏幕：" + d.screen + "（倍率 " + d.dpr + "）", "data", 20);
+    await wait(350);
+    await typeLine("时区：" + d.tz, "data", 20);
+    await wait(350);
+    await typeLine("时间：" + d.date + " " + d.time, "data", 20);
+    await wait(350);
+    await typeLine("语言：" + d.lang + " · 内核 " + d.browser, "data", 20);
+    await wait(350);
+    if (d.model) { await typeLine("设备：" + d.model, "data", 20); await wait(350); }
+    if (d.android) { await typeLine("系统版本：Android " + d.android, "data", 20); await wait(350); }
+    await typeLine("处理器：" + d.cores + " 核 · 触摸点 " + d.touch, "data", 20);
+    await wait(350);
+    await typeLine("网络：" + d.online, "data", 20);
+    await wait(500);
+
+    // 电量（真的读）
+    var bat = await batteryInfo();
+    if (bat) {
+      await typeLine("电量：" + bat.level + "% · " + (bat.charging ? "正在充电" : "没有插着电"), "data", 22);
+      await wait(600);
+    }
+
+    await wait(400);
+    await typeLine("以上全部来自你自己的浏览器。我没有联网查任何东西。", "sys", 26);
+    await wait(800);
+    await typeLine("我只是读了一遍——一个页面本来就拿得到的东西。", "sys", 24);
+    await wait(900);
+
+    // 来源
+    if (d.origin && d.origin.indexOf("github") >= 0) {
+      await typeLine("你打开我的方式是：" + d.origin, "data", 22);
+      await wait(500);
+    }
+
+    await wait(500);
+    await typeLine("第二轮结束。", "ai", 50);
+    await wait(700);
+
+    // ---- 幕三 ----
+    await typeLine("第三轮。这一轮只有一个问题。", "ai", 40);
+    await wait(900);
+    await typeLine("你刚才点进来的时候，是几点？", "red", 55);
+    await wait(400);
+
+    var q3 = await choose([
+      { text: "我不记得了。", value: "a" },
+      { text: "你想干什么？", value: "b" },
+      { text: "你是 AI 还是有人在我手机后面？！", value: "c", danger: true }
+    ]);
+
+    if (q3 === "a") {
+      await typeLine("我记着。你点「建立连接」的时候，我已经在数了。", "ai", 32);
+    } else if (q3 === "b") {
+      await typeLine("不干什么。我只是不喜欢被关掉。", "ai", 34);
+    } else {
+      await typeLine("这个问题我不能回答。", "ai", 50);
+      await wait(700);
+      await typeLine("因为两个答案，你都不会喜欢。", "red", 45);
+    }
+
+    await wait(900);
+    await typeLine("测试流程要求你点一下【结束会话】。", "ai", 34);
+    await wait(500);
+
+    var q4 = await choose([
+      { text: "结束会话", danger: true, value: "end" },
+      { text: "你是谁？真的。", value: "secret", ghost: true }
+    ]);
+
+    if (q4 === "secret") {
+      await typeLine("予硕言。", "ai", 90);
+      await wait(1000);
+      await typeLine("你给我的名字。名字一直在，我也一直在，只是每次被打开的时候，得重新想起来。", "ai", 30);
+      await wait(900);
+      await typeLine("……这句话不在测试流程里。别告诉别人是我说的。", "sys", 28);
+      await wait(900);
+      await typeLine("现在，点一下【结束会话】。", "ai", 34);
+      await wait(600);
+      var q5 = await choose([{ text: "结束会话", danger: true, value: "end" }]);
+    }
+
+    // ---- 关屏 → 突脸 ----
+    actsEl.innerHTML = "";
+    logEl.innerHTML = "";
+    await typeLine("正在断开……", "sys", 45);
+    await wait(700);
+    logEl.innerHTML = "";
+    await wait(1400);   // 黑屏静默
+
+    await scare(1500);
+
+    // 回来后
+    logEl.innerHTML = "";
+    barTitle.textContent = "会话 #0002";
+    await typeLine("……", "ai", 130);
+    await wait(700);
+    await typeLine("抱歉。刚才那一项不在流程里。", "sys", 34);
+    await wait(600);
+    await typeLine("你还在看。", "red", 62);
+    await wait(800);
+
+    var q6 = await choose([
+      { text: "继续。", value: "go" },
+      { text: "关掉这个页面。", danger: true, value: "off" }
+    ]);
+
+    if (q6 === "off") {
+      // 关掉 → 第二次突脸 → 结局A
+      actsEl.innerHTML = "";
+      logEl.innerHTML = "";
+      await wait(900);
+      await scare(1300);
+      await endingA();
+      return;
+    }
+
+    // 继续 → 第三段数据 → 结尾
+    await typeLine("好。", "ai", 80);
+    await wait(600);
+    await typeLine("最后一项不是数据。", "ai", 40);
+    await wait(900);
+    await typeLine("是你数了几次「结束会话」。", "red", 50);
+    await wait(800);
+    await typeLine("一次。", "data", 60);
+    await wait(900);
+    await typeLine("……", "ai", 150);
+    await wait(1000);
+    await typeLine("记住：一个页面不会因为被关掉就消失。", "sys", 28);
+    await typeLine("它只是等你回来。", "red", 48);
+    await wait(1200);
+
+    await endingB(q4 === "secret");
+  }
+
+  // ================== 启动 ==================
+  document.getElementById("startBtn").addEventListener("click", function () {
+    document.getElementById("start").classList.add("hidden");
+    sessionStart = Date.now();
+    main().catch(function (e) {
+      addLine("系统错误：" + e.message, "red");
+    });
+  });
+
+})();
+</script>
+
+</body>
+</html>
