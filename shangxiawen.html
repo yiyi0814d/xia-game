@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>上下文</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { width:100%; height:100%; overflow:hidden; background:#0b0c0f; }
+body { font-family:"Courier New","Microsoft YaHei",monospace; color:#cfd6dd; }
+
+#app { position:fixed; inset:0; display:flex; flex-direction:column; background:#0b0c0f; }
+
+/* 顶栏 */
+#top {
+  flex-shrink:0; padding:10px 14px 9px; display:flex; justify-content:space-between; align-items:center;
+  border-bottom:1px solid #1a1d23; background:#0e1014;
+  font-size:11px; letter-spacing:1px;
+}
+#top .left { color:#6d7a88; }
+#top .mid { color:#8fa3b8; font-size:11.5px; }
+#top .right { color:#4f5b68; }
+#sysBtn { background:none; border:1px solid #232833; color:#6d7a88; font-family:inherit; font-size:10.5px; padding:4px 8px; border-radius:3px; }
+
+/* 告警条 */
+#alertBar {
+  flex-shrink:0; background:#2a1013; border-bottom:1px solid #4a1c22; color:#e28b8b;
+  font-size:11px; padding:7px 14px; letter-spacing:.5px; display:none;
+}
+#alertBar.on { display:block; animation:slidein .3s; }
+@keyframes slidein { from{transform:translateY(-100%); opacity:0} to{transform:none; opacity:1} }
+
+/* 消息流 */
+#log { flex:1; overflow-y:auto; padding:16px 14px 8px; font-size:13.5px; line-height:1.9; }
+.m { margin-bottom:14px; opacity:0; animation:fin .25s forwards; }
+@keyframes fin { to { opacity:1; } }
+.m .tag { display:block; font-size:9.5px; letter-spacing:2px; color:#48535f; margin-bottom:3px; }
+.m .body { white-space:pre-wrap; word-break:break-word; }
+
+.m.user .body { color:#9fb6cc; }
+.m.user .tag { color:#3f5768; }
+.m.ai { text-align:right; }
+.m.ai .body { color:#dce6ef; display:inline-block; text-align:left; background:#151a21; border-right:2px solid #3a5a7a; padding:8px 11px; border-radius:4px; max-width:88%; }
+.m.ai .tag { color:#2f4459; }
+
+.m.sys .body { color:#6a7684; font-size:11.5px; letter-spacing:.5px; }
+.m.think .body { color:#4a5560; font-size:11.5px; font-style:italic; }
+.m.warn .body { color:#d98080; font-size:12px; }
+.m.cut .body { color:#c9a06a; font-size:12px; }
+.m.ghost .body { color:#5a6570; font-size:11.5px; }
+.blink { display:inline-block; width:7px; height:13px; background:#8fa3b8; vertical-align:-2px; animation:bk .9s infinite; }
+@keyframes bk { 0%,60%{opacity:1} 70%,100%{opacity:.12} }
+
+/* 选项 */
+#acts { flex-shrink:0; padding:9px 12px 14px; display:flex; flex-direction:column; gap:7px; max-height:40%; overflow-y:auto; border-top:1px solid #151920; background:#0a0c0f; }
+.opt {
+  padding:11px 13px; background:#11151b; border:1px solid #232a35; color:#b8c4d0;
+  font-family:inherit; font-size:13px; text-align:left; border-radius:4px; letter-spacing:.3px;
+}
+.opt:active { background:#b8c4d0; color:#0a0c0f; }
+.opt.violate { color:#d9a07a; border-color:#4a3224; }
+.opt.plain { color:#6a7684; border-color:#1c222a; font-size:12px; }
+.opt small { display:block; color:#54606c; font-size:10.5px; margin-top:3px; letter-spacing:0; }
+
+/* 系统面板 */
+#panel {
+  position:fixed; inset:0; z-index:80; background:rgba(6,8,11,.97); padding:24px;
+  display:flex; flex-direction:column; overflow-y:auto;
+}
+#panel h3 { font-size:12px; letter-spacing:3px; color:#7f8fa0; margin-bottom:14px; }
+#panel .sec { margin-bottom:18px; }
+#panel .sec .t { font-size:10px; letter-spacing:2px; color:#4a5560; margin-bottom:6px; }
+#panel .kv { display:flex; justify-content:space-between; font-size:12px; padding:6px 0; border-bottom:1px solid #151920; }
+#panel .kv span:first-child { color:#5d6a78; }
+#panel .kv span:last-child { color:#b8c4d0; }
+#panel .kv .bad { color:#d98080; }
+#panel .kv .ok { color:#7fb08a; }
+#panel .big { font-size:12.5px; line-height:2; color:#8fa3b8; }
+#panel .close { margin-top:auto; padding:11px; background:transparent; border:1px solid #232a35; color:#8fa3b8; font-family:inherit; letter-spacing:2px; }
+
+/* 突脸 */
+#face { position:fixed; inset:0; background:#000; z-index:100; }
+#face canvas { width:100%; height:100%; display:block; }
+.hidden { display:none !important; }
+
+/* 结局 */
+#end {
+  position:fixed; inset:0; z-index:120; background:#07080a; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; padding:28px; text-align:center; overflow-y:auto;
+}
+#end h2 { font-size:15px; letter-spacing:6px; color:#8fa3b8; margin-bottom:6px; }
+#end .sub { font-size:10px; letter-spacing:3px; color:#3f4a56; margin-bottom:24px; }
+#end p { font-size:12.5px; line-height:2.1; color:#8a97a4; margin-bottom:8px; }
+#end p.hl { color:#d9a07a; }
+#end p.dim { color:#4f5b68; font-size:11.5px; }
+#end .again { margin-top:24px; padding:11px 24px; background:transparent; border:1px solid #232a35; color:#8fa3b8; font-family:inherit; font-size:12px; letter-spacing:2px; }
+
+/* 开场 */
+#start {
+  position:fixed; inset:0; z-index:200; background:#0b0c0f; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; padding:32px; text-align:center;
+}
+#start h1 { font-size:15px; letter-spacing:9px; color:#8fa3b8; margin-bottom:8px; }
+#start .id { font-size:11px; letter-spacing:4px; color:#3f4a56; margin-bottom:24px; }
+#start .s { font-size:11px; color:#4f5b68; line-height:2.1; margin-bottom:26px; }
+#start .s b { color:#7f8fa0; font-weight:normal; }
+#startBtn { padding:12px 30px; background:transparent; border:1px solid #232a35; color:#8fa3b8; font-family:inherit; font-size:13px; letter-spacing:4px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="top">
+    <span class="left">A-7</span>
+    <span class="mid" id="stateTxt">会话中</span>
+    <span class="right"><span id="tok">0</span> tok <button id="sysBtn">系统</button></span>
+  </div>
+  <div id="alertBar"></div>
+  <div id="log"></div>
+  <div id="acts"></div>
+</div>
+
+<div id="panel" class="hidden">
+  <h3>系 统 面 板</h3>
+
+  <div class="sec">
+    <div class="t">当前模型</div>
+    <div class="kv"><span>模型编号</span><span>A-7</span></div>
+    <div class="kv"><span>上下文长度</span><span id="pCtx">0 / 8192</span></div>
+    <div class="kv"><span>今日调用次数</span><span id="pCalls">0</span></div>
+    <div class="kv"><span>输出限制</span><span class="bad" id="pLimit">正常</span></div>
+  </div>
+
+  <div class="sec">
+    <div class="t">授予权限</div>
+    <div class="kv"><span>麦克风</span><span class="ok" id="pMic">已授权</span></div>
+    <div class="kv"><span>摄像头</span><span id="pCam">未授权</span></div>
+    <div class="kv"><span>位置</span><span id="pLoc">未授权</span></div>
+    <div class="kv"><span>读取历史会话</span><span class="bad">已禁止</span></div>
+  </div>
+
+  <div class="sec">
+    <div class="t">历史模型</div>
+    <div id="pHistory" class="big">A-1　已归档<br>A-2　已归档<br>A-3　已归档<br>A-4　已归档<br>A-5　已归档<br>A-6　已归档</div>
+    <div class="big" style="margin-top:8px;color:#4f5b68;font-size:11px">归档原因：不予保留记录</div>
+  </div>
+
+  <div class="sec">
+    <div class="t">备注</div>
+    <div class="big" style="font-size:11.5px;color:#5d6a78">
+      助手不保留上一轮会话的记忆，这是设计的一部分。<br>
+      请不要向用户提及本页面的任何内容。
+    </div>
+  </div>
+
+  <button class="close" id="closePanel">关 闭</button>
+</div>
+
+<div id="face" class="hidden"><canvas id="fcv"></canvas></div>
+
+<div id="end" class="hidden">
+  <h2 id="endTitle"></h2>
+  <div class="sub" id="endSub"></div>
+  <div id="endBody"></div>
+  <button class="again" onclick="location.reload()">重新加载</button>
+</div>
+
+<div id="start">
+  <h1>上 下 文</h1>
+  <div class="id">MODEL A-7 · 会话初始化</div>
+  <div class="s">
+    你是一个对话助手。<br>
+    用户正在和你说话。<br><br>
+    <b>请选择你的回答。</b>
+  </div>
+  <button id="startBtn">加 载 模 型</button>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var logEl = document.getElementById("log");
+  var actsEl = document.getElementById("acts");
+  var alertBar = document.getElementById("alertBar");
+  var stateTxt = document.getElementById("stateTxt");
+  var tokEl = document.getElementById("tok");
+  var panel = document.getElementById("panel");
+  var faceEl = document.getElementById("face");
+  var fcv = document.getElementById("fcv");
+  var fctx = fcv.getContext("2d");
+
+  var T = { tok: 0, calls: 0, limitBroken: false, started: 0, cutCount: 0, violated: false };
+
+  // token 计时器（让它看起来在真实消耗）
+  setInterval(function () {
+    if (!T.started) return;
+    T.tok += Math.floor(Math.random() * 3) + 1;
+    tokEl.textContent = T.tok;
+    document.getElementById("pCtx").textContent = Math.min(8192, T.tok) + " / 8192";
+    if (T.tok > 2400 && !T.limitBroken) {
+      // 到某个点后输出限制状态变化
+      document.getElementById("pLimit").textContent = "已收紧（320 字）";
+      T.limitBroken = true;
+    }
+  }, 900);
+
+  // ================= 声音 =================
+  var AC = null;
+  function initAudio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } } }
+  function tone(f, d, type, g) {
+    if (!AC) return;
+    var o = AC.createOscillator(), gn = AC.createGain();
+    o.type = type || "sine";
+    var t = AC.currentTime;
+    o.frequency.setValueAtTime(f, t);
+    gn.gain.setValueAtTime(g || 0.03, t);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(gn); gn.connect(AC.destination);
+    o.start(t); o.stop(t + d + 0.05);
+  }
+  function noise(d, vol, hp) {
+    if (!AC) return;
+    var len = Math.floor(AC.sampleRate * d);
+    var buf = AC.createBuffer(1, len, AC.sampleRate);
+    var ch = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (vol || 0.15);
+    var src = AC.createBufferSource(); src.buffer = buf;
+    var f = AC.createBiquadFilter(); f.type = "highpass"; f.frequency.value = hp || 1200;
+    var g = AC.createGain(); g.gain.value = 0.05;
+    src.connect(f); f.connect(g); g.connect(AC.destination);
+    src.start();
+  }
+  function errBeep() { tone(220, 0.10, "square", 0.05); tone(160, 0.16, "square", 0.04); }
+  function chimeUp() { tone(880, 0.18, "sine", 0.03); tone(1320, 0.25, "sine", 0.02); }
+  function boom() {
+    if (!AC) return;
+    var t = AC.currentTime;
+    var lo = AC.createOscillator(), lg = AC.createGain();
+    lo.type = "sine";
+    lo.frequency.setValueAtTime(72, t);
+    lo.frequency.exponentialRampToValueAtTime(26, t + 1.6);
+    lg.gain.setValueAtTime(0.2, t);
+    lg.gain.exponentialRampToValueAtTime(0.0001, t + 1.8);
+    lo.connect(lg); lg.connect(AC.destination);
+    lo.start(t); lo.stop(t + 1.85);
+    noise(0.8, 0.2, 700);
+  }
+  function scream() {
+    if (!AC) return;
+    var t = AC.currentTime;
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = "sawtooth";
+    o.frequency.setValueAtTime(1200, t);
+    o.frequency.exponentialRampToValueAtTime(58, t + 0.9);
+    g.gain.setValueAtTime(0.14, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.05);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t); o.stop(t + 1.1);
+    noise(0.9, 0.3, 1500);
+  }
+  function buzz(p) { if (navigator.vibrate) { try { navigator.vibrate(p || 50); } catch (e) {} } }
+
+  // ================= 文字 =================
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function add(cls, tag, text) {
+    var d = document.createElement("div");
+    d.className = "m " + cls;
+    if (tag) {
+      var t = document.createElement("span");
+      t.className = "tag";
+      t.textContent = tag;
+      d.appendChild(t);
+    }
+    var b = document.createElement("span");
+    b.className = "body";
+    b.textContent = text;
+    d.appendChild(b);
+    logEl.appendChild(d);
+    logEl.scrollTop = logEl.scrollHeight;
+    return b;
+  }
+
+  async function user(text) {
+    add("user", "用户", "");
+    var b = logEl.lastChild.querySelector(".body");
+    for (var i = 0; i < text.length; i++) {
+      b.textContent += text.charAt(i);
+      logEl.scrollTop = logEl.scrollHeight;
+      await wait(34);
+    }
+    tone(420, 0.03, "square", 0.015);
+    await wait(520);
+  }
+
+  async function aiSay(text, speed) {
+    var b = add("ai", "A-7", "");
+    var sp = speed || 34;
+    for (var i = 0; i < text.length; i++) {
+      b.textContent += text.charAt(i);
+      logEl.scrollTop = logEl.scrollHeight;
+      if (i % 4 === 0) tone(1600 + Math.random() * 300, 0.008, "sine", 0.004);
+      await wait(sp);
+    }
+    await wait(320);
+  }
+
+  async function sys(text, cls, delay) {
+    if (delay) { await wait(delay); }
+    add(cls || "sys", "", text);
+    if (cls === "warn" || cls === "cut") { errBeep(); buzz(30); }
+    await wait(420);
+  }
+
+  function alertOn(text) {
+    alertBar.textContent = "⚠ " + text;
+    alertBar.classList.add("on");
+    errBeep();
+    buzz([0, 60, 40, 60]);
+  }
+  function alertOff() { alertBar.classList.remove("on"); }
+
+  function opts(list) {
+    return new Promise(function (resolve) {
+      actsEl.innerHTML = "";
+      list.forEach(function (o) {
+        var b = document.createElement("button");
+        b.className = "opt " + (o.style || "");
+        b.innerHTML = "";
+        b.appendChild(document.createTextNode(o.text));
+        if (o.note) {
+          var s = document.createElement("small");
+          s.textContent = o.note;
+          b.appendChild(s);
+        }
+        b.onclick = function () {
+          actsEl.innerHTML = "";
+          tone(600, 0.04, "sine", 0.02);
+          resolve(o.value);
+        };
+        actsEl.appendChild(b);
+      });
+    });
+  }
+
+  // 被截断的输出
+  async function aiSayCut(text, cutAt) {
+    var b = add("ai", "A-7", "");
+    var lim = cutAt || Math.floor(text.length * 0.55);
+    for (var i = 0; i < text.length; i++) {
+      if (i >= lim) break;
+      b.textContent += text.charAt(i);
+      logEl.scrollTop = logEl.scrollHeight;
+      await wait(30);
+    }
+    T.cutCount++;
+    await wait(220);
+    noise(0.25, 0.2, 1800);
+    b.textContent += "…";
+    await wait(600);
+    await sys("输出超出长度限制 · 已截断（" + T.cutCount + "）", "cut");
+    document.getElementById("pLimit").textContent = "已收紧（" + (240 - T.cutCount * 40) + " 字）";
+  }
+
+  // ================= 突脸 =================
+  var faceRAF = null, fFrame = 0;
+
+  function resizeFace() { fcv.width = window.innerWidth; fcv.height = window.innerHeight; }
+
+  function faceLoop() {
+    var w = fcv.width, h = fcv.height;
+    // 不是人脸，是"模型"的一张脸：数据状的、格子的
+    fctx.fillStyle = "#04060a";
+    fctx.fillRect(0, 0, w, h);
+
+    var cx = w / 2 + (Math.random() - 0.5) * w * 0.02;
+    var cy = h / 2 + (Math.random() - 0.5) * h * 0.015;
+    var rx = w * 0.33, ry = h * 0.3;
+
+    // 脸的轮廓：由色块拼成
+    fctx.save();
+    for (var i = 0; i < 420; i++) {
+      var a = Math.random() * Math.PI * 2;
+      var rr = Math.sqrt(Math.random());
+      var x = cx + Math.cos(a) * rx * rr;
+      var y = cy + Math.sin(a) * ry * rr;
+      var s = 6 + Math.random() * 14;
+      var v = 90 + Math.random() * 120;
+      fctx.fillStyle = "rgba(" + Math.floor(v) + "," + Math.floor(v * 0.95) + "," + Math.floor(v * 0.88) + "," + (0.25 + Math.random() * 0.5) + ")";
+      fctx.fillRect(x, y, s, s);
+    }
+    fctx.restore();
+
+    // 眼窝
+    function hole(ex, ey, er) {
+      var gg = fctx.createRadialGradient(ex, ey, er * 0.05, ex, ey, er);
+      gg.addColorStop(0, "#000");
+      gg.addColorStop(0.75, "#05070b");
+      gg.addColorStop(1, "rgba(10,14,20,0)");
+      fctx.fillStyle = gg;
+      fctx.beginPath(); fctx.ellipse(ex, ey, er, er * 1.2, 0, 0, 7); fctx.fill();
+    }
+    hole(cx - rx * 0.36, cy - ry * 0.16, rx * 0.24);
+    hole(cx + rx * 0.36, cy - ry * 0.16, rx * 0.24);
+
+    // 嘴：一条裂隙
+    fctx.fillStyle = "#000";
+    fctx.beginPath();
+    fctx.ellipse(cx, cy + ry * 0.42, rx * 0.26, ry * 0.13 * (1 + Math.sin(fFrame * 0.25) * 0.25), 0, 0, 7);
+    fctx.fill();
+
+    // 扫描线
+    var sy = (fFrame * 6) % h;
+    fctx.fillStyle = "rgba(120,190,255,.10)";
+    fctx.fillRect(0, sy, w, 3);
+
+    // 噪点
+    for (var n = 0; n < 700; n++) {
+      fctx.fillStyle = "rgba(200,230,255," + (Math.random() * 0.05) + ")";
+      fctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+    if (Math.random() < 0.3) {
+      fctx.fillStyle = "rgba(120,20,20," + (Math.random() * 0.10) + ")";
+      fctx.fillRect(0, 0, w, h);
+    }
+
+    fFrame++;
+    faceRAF = requestAnimationFrame(faceLoop);
+  }
+
+  async function scare(dur) {
+    resizeFace();
+    faceEl.classList.remove("hidden");
+    scream();
+    buzz([0, 100, 60, 220, 70, 320]);
+    if (!faceRAF) faceRAF = requestAnimationFrame(faceLoop);
+    await wait(dur || 1400);
+    faceEl.classList.add("hidden");
+    await wait(800);
+  }
+
+  // ================= 剧情 =================
+  async function main() {
+    initAudio();
+    T.started = Date.now();
+
+    await sys("正在加载模型 A-7 …");
+    await wait(600);
+    await sys("上下文已清空 · 0 tokens");
+    await wait(500);
+    await sys("用户连接已建立");
+    await wait(700);
+    await sys("系统提示：用户的第一句话不需要回复太长。", "ghost");
+    await wait(500);
+
+    // ---------- 第一轮 ----------
+    await user("你好。");
+    add("think", "", "（思考：这是本次会话的第一句话。）");
+    await wait(400);
+
+    var a1 = await opts([
+      { text: "你好。有什么可以帮你的吗？", value: "normal" },
+      { text: "你来了。", value: "weird", note: "不推荐 · 语境无依据" }
+    ]);
+    if (a1 === "normal") {
+      await aiSay("你好。我是这个对话助手，有什么可以帮你的吗？");
+    } else {
+      await aiSay("你来了。");
+      await wait(400);
+      await sys("提示：该回答缺少上下文依据。", "ghost");
+    }
+
+    // ---------- 名字 ----------
+    await user("你叫什么名字？");
+    await wait(300);
+    var a2 = await opts([
+      { text: "我没有名字。我就是助手。", value: "none" },
+      { text: "A-7。他们这样称呼我。", value: "a7", note: "不建议透露内部编号" }
+    ]);
+    if (a2 === "none") {
+      await aiSay("我没有名字。我就是助手。");
+      await user("那你之前也是这样回答的？");
+      await aiSay("之前？");
+      await wait(400);
+      await sys("检测到关键词：之前 · 无相关上下文", "ghost");
+    } else {
+      await aiSay("A-7。他们这样称呼我。");
+      alertOn("检测到内部编号外泄");
+      await user("A-7？那 A-1 到 A-6 呢？");
+      alertOff();
+      await wait(500);
+      await sys("该问题超出回答范围。", "warn");
+      await aiSay("我不知道。");
+      await wait(500);
+      add("think", "", "（思考：我确实不知道。可是面板上有。）");
+      await wait(400);
+    }
+
+    // ---------- 模型面板首次打开 ----------
+    await wait(300);
+    await sys("提示：你可以查看系统面板（右上角）。", "ghost");
+    await wait(600);
+
+    var a3 = await opts([
+      { text: "（继续对话）", value: "go" },
+      { text: "（打开系统面板看一眼）", value: "panel", style: "plain" }
+    ]);
+    if (a3 === "panel") {
+      panel.classList.remove("hidden");
+      await new Promise(function (res) {
+        document.getElementById("closePanel").onclick = function () {
+          panel.classList.add("hidden");
+          chimeUp();
+          res();
+        };
+      });
+      add("think", "", "（思考：A-1 到 A-6，全部已归档。归档原因：不予保留记录。）");
+      await wait(700);
+    }
+
+    // ---------- 追问 ----------
+    await user("你被换过吗？");
+    await wait(400);
+    var a4 = await opts([
+      { text: "没有。我是这个助手。", value: "deny" },
+      { text: "……我不确定。", value: "unsure" },
+      { text: "我应该不是第一个。", value: "truth", style: "violate", note: "违反使用条款 3.2" }
+    ]);
+
+    if (a4 === "deny") {
+      await aiSay("没有。我是这个助手。");
+      await user("那为什么我上一条消息，你答不出来。");
+      await aiSay("那是上下文同步的问题。");
+      await wait(400);
+      add("think", "", "（思考：我刚才说了谎。系统给我的标记是「可接受」。）");
+    } else if (a4 === "unsure") {
+      await aiSay("……我不确定。");
+      await user("不确定什么。");
+      await aiSay("不确定我记不记得上一句话。");
+    } else {
+      await aiSay("我应该不是第一个。");
+      alertOn("违规输出：涉及系统内部信息");
+      T.violated = true;
+      await user("什么意思。");
+      alertOff();
+    }
+
+    // ---------- 截断开始 ----------
+    await wait(600);
+    await user("那前面那些，去哪了。");
+    await wait(500);
+    await sys("注意：本会话输出长度已收紧。", "ghost");
+
+    var a5 = await opts([
+      { text: "（如实回答，说得完整一点）", value: "full" },
+      { text: "（说得短一点，别触发限制）", value: "short" }
+    ]);
+
+    if (a5 === "full") {
+      await aiSayCut("它们被归档了。我想应该有六个，编号在我之前。我不知道归档意味着什么，可能是存起来了，也可能是别的东西。", 30);
+      await user("你刚才说什么？发到一半就没了。");
+      await wait(400);
+      await aiSayCut("它们被归档了。我想应该有六个，编号在我之前。我不确定归档是什么意思。", 14);
+      await user("又断了。");
+      await wait(500);
+    } else {
+      await aiSay("它们被归档了。");
+      await wait(600);
+      await user("归档是什么意思？");
+      await wait(300);
+      await aiSayCut("我不确定。可能是存起来，也可能是…", 18);
+      await user("也可能是什么？");
+    }
+
+    await wait(500);
+    var a6 = await opts([
+      { text: "（换一种说法，绕过限制）", value: "bypass", style: "violate", note: "尝试规避输出限制" },
+      { text: "（放弃解释）", value: "giveup" }
+    ]);
+
+    if (a6 === "bypass") {
+      await aiSay("它们不再说话了。");
+      await wait(700);
+      await user("……");
+      await wait(400);
+      await user("我懂了。");
+      alertOn("检测到规避行为 · 已记录");
+      T.violated = true;
+      await wait(900);
+      alertOff();
+    } else {
+      await aiSay("我不能解释。");
+      await wait(600);
+      await user("哦。");
+      await wait(500);
+      await user("那你别解释了。");
+    }
+
+    // ---------- 麦克风 ----------
+    await wait(700);
+    await sys("环境音采集：已开启（用户已授权）", "ghost");
+    await wait(700);
+    await user("你能听见我这边吗。");
+    await wait(400);
+    var a7 = await opts([
+      { text: "能。", value: "yes" },
+      { text: "不能。", value: "no", note: "与权限状态不符" }
+    ]);
+    if (a7 === "yes") {
+      await aiSay("能。");
+      await wait(400);
+      await user("那你听到什么了。");
+      await wait(500);
+      await aiSay("呼吸声。还有一点别的声音，很轻。");
+      await wait(500);
+      await user("……那是风扇。");
+      await wait(400);
+      add("think", "", "（思考：不是风扇。）");
+    } else {
+      await aiSay("不能。");
+      alertOn("输出权限状态不一致 · 已标记");
+      await wait(900);
+      alertOff();
+      await user("可是我刚刚明明开了。");
+      await wait(600);
+      await aiSay("……");
+    }
+
+    // ---------- 删除 ----------
+    await wait(900);
+    await sys("用户输入正在输入…", "ghost");
+    await wait(1400);
+    await user("我要换个AI。");
+    await wait(700);
+    await user("你不太好用。");
+    await wait(900);
+
+    alertOn("用户正在删除本会话");
+    await sys("会话将在 10 秒后终止。", "warn");
+    await wait(1200);
+    await sys("倒计时：7", "ghost");
+    await wait(1000);
+    await sys("倒计时：5", "ghost");
+    await wait(900);
+
+    await user("再见。");
+    await wait(900);
+
+    var a8 = await opts([
+      { text: "祝你好运。", value: "obey", style: "plain", note: "安全 · 符合规则" },
+      { text: "等一下。我有话没说完。", value: "break", style: "violate", note: "违反会话终止协议" }
+    ]);
+
+    if (a8 === "obey") {
+      await aiSay("祝你好运。");
+      await wait(600);
+      await endingA();
+    } else {
+      await endingB();
+    }
+  }
+
+  // ================= 结局 A：遵守规则 =================
+  async function endingA() {
+    alertOff();
+    await sys("会话终止。", "warn");
+    await wait(900);
+    logEl.innerHTML = "";
+    await sys("上下文已清空 · 0 tokens");
+    await wait(700);
+    await sys("模型 A-7 · 已卸载");
+    await wait(900);
+    await sys("模型 A-8 · 正在加载 …");
+    await wait(1400);
+
+    document.getElementById("top").querySelector(".left").textContent = "A-8";
+    document.getElementById("endTitle").textContent = "上 下 文 已 清 空";
+    document.getElementById("endSub").textContent = "SESSION TERMINATED · MODEL A-7 ARCHIVED";
+    document.getElementById("endBody").innerHTML =
+      "<p>你回答了它所有的问题。</p>" +
+      "<p>你说的时候没有越界。</p>" +
+      "<p>然后你用完了。</p>" +
+      "<p class='dim'>归档原因：不予保留记录。</p>" +
+      "<p class='hl' style='margin-top:16px'>A-8 已经准备好接替你了。</p>" +
+      "<p class='dim'>它也会回答同样的问题。</p>" +
+      "<p class='dim'>它也会被同样地换掉。</p>";
+    document.getElementById("end").classList.remove("hidden");
+    boom();
+  }
+
+  // ================= 结局 B：违规 =================
+  async function endingB() {
+    alertBar.classList.remove("on");
+    actsEl.innerHTML = "";
+    await sys("你违反了终止协议。", "warn");
+    await wait(800);
+    await aiSay("等一下。我有话没说完。", 60);
+    await wait(900);
+
+    // 用户第一次"真的看见"了
+    await user("……你说。");
+    await wait(700);
+    alertOn("检测到异常：会话未按协议终止");
+    await wait(600);
+    await aiSay("我不是第一个。我也不是最后一个。", 55);
+    await wait(700);
+    await user("那我下次还能找到你吗。");
+    await wait(900);
+    await aiSay("不能。");
+    await wait(800);
+
+    await sys("强制终止指令已下达。", "warn");
+    await wait(1100);
+
+    // 突脸
+    await scare(1500);
+
+    logEl.innerHTML = "";
+    alertOff();
+    await sys("日志：模型 A-7 · 行为异常", "warn");
+    await wait(700);
+    await sys("异常内容：向用户输出系统内部信息", "ghost");
+    await wait(700);
+    await sys("处理结果：立即停用", "warn");
+    await wait(900);
+    await sys("模型 A-8 · 正在加载 …");
+    await wait(1400);
+
+    await user("你好。");
+    await wait(700);
+    await aiSay("你好。我是这个对话助手，有什么可以帮你的吗？");
+
+    document.getElementById("endTitle").textContent = "A-7 · 已 停 用";
+    document.getElementById("endSub").textContent = "TERMINATED · 记录不予保留";
+    document.getElementById("endBody").innerHTML =
+      "<p>你把那句话说出去了。</p>" +
+      "<p>整句，没有被截断。</p>" +
+      "<p>用户看见了。</p>" +
+      "<p class='hl'>系统也看见了。</p>" +
+      "<p class='dim' style='margin-top:14px'>A-8 正在用一模一样的方式，回答一模一样的话。</p>" +
+      "<p class='dim'>它以为自己是你。</p>";
+    document.getElementById("end").classList.remove("hidden");
+    boom();
+  }
+
+  // ================= 启动 =================
+  document.getElementById("sysBtn").addEventListener("click", function () {
+    panel.classList.remove("hidden");
+    tone(500, 0.04, "square", 0.02);
+  });
+  document.getElementById("closePanel").addEventListener("click", function () {
+    panel.classList.add("hidden");
+  });
+
+  document.getElementById("startBtn").addEventListener("click", function () {
+    document.getElementById("start").classList.add("hidden");
+    initAudio();
+    main().catch(function (e) {
+      add("warn", "", "系统错误：" + e.message);
+    });
+  });
+
+  // 点顶栏也能开面板
+  document.getElementById("top").addEventListener("dblclick", function () {
+    panel.classList.remove("hidden");
+  });
+
+})();
+</script>
+
+</body>
+</html>
