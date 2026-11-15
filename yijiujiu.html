@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>已就寝 · 家校通</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:"Courier New","Microsoft YaHei",monospace; -webkit-tap-highlight-color:transparent; }
+body { background:#0d0d0d; color:#fff; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:10px; }
+.phone { width:100%; max-width:420px; height:92vh; max-height:880px; background:#000; border:2px solid #1d1d1d; border-radius:32px; display:flex; flex-direction:column; overflow:hidden; position:relative; box-shadow:0 0 50px rgba(0,255,0,.06); }
+
+.status-bar { height:30px; background:#000; display:flex; justify-content:space-between; align-items:center; padding:0 16px; font-size:12px; color:#0f0; border-bottom:1px solid #1a1a1a; flex-shrink:0; }
+.rec { color:#f44; animation:blink 1.2s infinite; }
+@keyframes blink { 0%,60%{opacity:1} 70%,100%{opacity:.15} }
+
+.monitor { position:relative; background:#000; border-bottom:1px solid #1a1a1a; flex-shrink:0; }
+.monitor-header { display:flex; justify-content:space-between; padding:7px 10px; font-size:11px; color:#0f0; background:#0a0a0a; border-bottom:1px solid #141414; }
+.monitor-header .warn { color:#f44; }
+#cv { display:block; width:100%; height:auto; background:#0b1410; touch-action:manipulation; }
+.monitor-screen { position:relative; }
+.monitor-screen::before { content:""; position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(to bottom,rgba(0,0,0,0) 0px,rgba(0,0,0,0) 2px,rgba(0,255,0,.05) 3px,rgba(0,0,0,0) 4px); z-index:5; }
+.monitor-screen.tap-hint::after { content:"点击画面 · 数一数"; position:absolute; left:0; right:0; bottom:8px; text-align:center; font-size:11px; color:#0f0; background:rgba(0,0,0,.7); padding:3px 0; z-index:6; animation:blink 1.6s infinite; }
+.monitor-screen.glitch #cv { animation:jit .12s infinite; }
+@keyframes jit { 0%{transform:translate(0,0)} 25%{transform:translate(-2px,1px)} 50%{transform:translate(2px,-1px)} 75%{transform:translate(-1px,-1px)} 100%{transform:translate(0,0)} }
+
+.monitor-info { display:flex; justify-content:space-between; padding:5px 10px; font-size:10px; color:#0f0; background:#050505; border-top:1px solid #111; }
+.monitor-info .red { color:#f44; }
+
+.chat { flex:1; overflow-y:auto; padding:10px; background:#0a0a0a; min-height:80px; }
+.message { max-width:82%; margin-bottom:9px; padding:7px 9px; font-size:13px; line-height:1.55; border-radius:5px; word-break:break-word; animation:fade .25s ease; }
+@keyframes fade { from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none} }
+.message.system { background:#111; color:#0f0; border:1px solid #222; margin:0 auto 9px; text-align:center; font-size:12px; max-width:92%; }
+.message.teacher { background:#132013; color:#cfeccf; border-left:2px solid #0f0; }
+.message.me { background:#101d2b; color:#c9e2ff; margin-left:auto; border-right:2px solid #4af; }
+.message.chenmo { background:#2a1212; color:#ffd2d2; border-left:2px solid #f44; }
+.message.sysred { background:#1a0505; color:#f66; border:1px solid #401010; margin:0 auto 9px; text-align:center; font-size:12px; max-width:92%; }
+
+.choices { padding:9px 10px 12px; background:#000; border-top:1px solid #151515; display:flex; flex-direction:column; gap:7px; flex-shrink:0; max-height:34%; overflow-y:auto; }
+.choice-btn { padding:9px 11px; background:#0a1a0a; color:#0f0; border:1px solid #0f0; border-radius:4px; font-size:13px; text-align:left; cursor:pointer; font-family:inherit; }
+.choice-btn:active { background:#0f0; color:#000; }
+.choice-btn.danger { background:#220808; color:#f66; border-color:#f44; }
+.choice-btn.danger:active { background:#f44; color:#fff; }
+
+.mask { position:absolute; inset:0; background:#000; display:flex; align-items:center; justify-content:center; flex-direction:column; z-index:30; padding:28px; text-align:center; }
+.mask h1 { font-size:20px; color:#0f0; letter-spacing:6px; margin-bottom:10px; }
+.mask .sub { font-size:11px; color:#3a5; margin-bottom:30px; letter-spacing:2px; }
+.enter { padding:11px 26px; background:transparent; color:#0f0; border:1px solid #0f0; font-family:inherit; font-size:13px; letter-spacing:3px; cursor:pointer; }
+.enter:active { background:#0f0; color:#000; }
+
+.ending { position:absolute; inset:0; background:rgba(0,0,0,.96); color:#f44; display:flex; align-items:center; justify-content:center; flex-direction:column; padding:28px; text-align:center; z-index:20; }
+.ending h2 { margin-bottom:18px; color:#f44; letter-spacing:5px; font-size:19px; }
+.ending p { margin-bottom:10px; line-height:1.8; font-size:13px; }
+.reset-btn { margin-top:22px; padding:9px 18px; background:transparent; color:#f44; border:1px solid #f44; cursor:pointer; font-family:inherit; font-size:12px; }
+.hidden { display:none !important; }
+</style>
+</head>
+<body>
+
+<div class="phone">
+
+  <div class="status-bar">
+    <span id="clock">21:14</span>
+    <span>家校通 · 家长端</span>
+    <span class="rec">● REC</span>
+  </div>
+
+  <div class="monitor">
+    <div class="monitor-header">
+      <span>高一(7)班 · 晚自习</span>
+      <span class="warn" id="alarm">未就寝提醒</span>
+    </div>
+    <div class="monitor-screen" id="mScreen">
+      <canvas id="cv"></canvas>
+    </div>
+    <div class="monitor-info">
+      <span>AI在室学生 <span id="count" class="red">46</span>/46</span>
+      <span id="mclock">21:14</span>
+      <span id="who">陈默 · 墙角站立</span>
+    </div>
+  </div>
+
+  <div class="chat" id="chat"></div>
+  <div class="choices" id="choices"></div>
+
+  <div class="mask" id="startMask">
+    <h1>家校通</h1>
+    <div class="sub">高一(7)班 · 家长端监控</div>
+    <button class="enter" id="enterBtn">进 入 监 控</button>
+  </div>
+
+  <div class="ending hidden" id="ending">
+    <h2 id="endTitle">已就寝</h2>
+    <p id="endBody"></p>
+    <button class="reset-btn" onclick="location.reload()">重新开始</button>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var cv = document.getElementById("cv");
+  var ctx = cv.getContext("2d");
+  var W = 480, H = 250;
+  cv.width = W; cv.height = H;
+
+  var chatEl = document.getElementById("chat");
+  var choicesEl = document.getElementById("choices");
+  var countEl = document.getElementById("count");
+  var mclockEl = document.getElementById("mclock");
+  var clockEl = document.getElementById("clock");
+  var alarmEl = document.getElementById("alarm");
+  var mScreen = document.getElementById("mScreen");
+  var endingEl = document.getElementById("ending");
+
+  var S = {
+    time: 2114,
+    seats: [],
+    lit: 0,
+    counting: false,
+    allLit: false,
+    stranger: false,
+    glitch: false
+  };
+
+  // ---------- 声音（全部现场合成，不依赖任何素材）----------
+  var AC = null;
+  function initAudio() {
+    if (!AC) {
+      try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; }
+    }
+  }
+  function tone(freq, dur, type, gain) {
+    if (!AC) return;
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || "sine";
+    o.frequency.value = freq;
+    g.gain.value = gain || 0.05;
+    o.connect(g); g.connect(AC.destination);
+    var t = AC.currentTime;
+    o.start(t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.stop(t + dur + 0.02);
+  }
+  function noise(dur, vol) {
+    if (!AC) return;
+    var len = Math.floor(AC.sampleRate * dur);
+    var buf = AC.createBuffer(1, len, AC.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (vol || 0.25);
+    var src = AC.createBufferSource(); src.buffer = buf;
+    var f = AC.createBiquadFilter(); f.type = "highpass"; f.frequency.value = 1400;
+    var g = AC.createGain(); g.gain.value = 0.07;
+    src.connect(f); f.connect(g); g.connect(AC.destination);
+    src.start();
+  }
+  function buzz(ms) {
+    if (navigator.vibrate) { try { navigator.vibrate(ms || 80); } catch (e) {} }
+  }
+
+  // ---------- 座位 ----------
+  function buildSeats() {
+    S.seats = [];
+    for (var r = 0; r < 8; r++) {
+      for (var c = 0; c < 6; c++) {
+        if (r === 7 && c >= 4) continue; // 后排两个空座
+        S.seats.push({ x: 62 + c * 66, y: 84 + r * 18, n: 0 });
+      }
+    }
+  }
+
+  function drawPerson(x, y, color, label) {
+    ctx.fillStyle = "#f2c292";
+    ctx.fillRect(x + 2, y, 4, 3);
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y + 3, 8, 5);
+    if (label) {
+      ctx.fillStyle = "rgba(220,255,220,.9)";
+      ctx.font = "9px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(String(label), x + 4, y - 2);
+      ctx.textAlign = "left";
+    }
+  }
+
+  function draw() {
+    // 地面底色
+    ctx.fillStyle = "#0b1410";
+    ctx.fillRect(0, 0, W, H);
+
+    // 网格
+    ctx.strokeStyle = "rgba(0,255,0,.045)";
+    ctx.lineWidth = 1;
+    for (var gx = 0; gx < W; gx += 8) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
+    for (var gy = 0; gy < H; gy += 8) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
+
+    // 黑板
+    ctx.fillStyle = "#12241a";
+    ctx.fillRect(18, 6, 444, 26);
+    ctx.strokeStyle = "rgba(0,255,120,.35)";
+    ctx.strokeRect(18.5, 6.5, 443, 25);
+    ctx.fillStyle = "rgba(160,255,180,.55)";
+    ctx.font = "11px monospace";
+    ctx.fillText("晚自习 · 请保持安静", 28, 24);
+
+    // 讲台
+    ctx.fillStyle = "#1a3a1a";
+    ctx.fillRect(14, 44, 54, 14);
+    ctx.strokeStyle = "rgba(0,255,0,.45)";
+    ctx.strokeRect(14.5, 44.5, 53, 13);
+    ctx.fillStyle = "rgba(0,255,0,.5)";
+    ctx.font = "9px monospace";
+    ctx.fillText("讲台", 16, 42);
+
+    // 墙角
+    ctx.strokeStyle = "rgba(0,255,0,.5)";
+    ctx.beginPath();
+    ctx.moveTo(432, 46); ctx.lineTo(432, 196); ctx.lineTo(470, 196);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(0,255,0,.045)";
+    ctx.fillRect(432, 46, 38, 150);
+    ctx.fillStyle = "rgba(0,255,0,.5)";
+    ctx.font = "9px monospace";
+    ctx.fillText("墙角", 438, 42);
+
+    // 学生（46 个）
+    for (var i = 0; i < S.seats.length; i++) {
+      var s = S.seats[i];
+      drawPerson(s.x, s.y, "#2f6fe0", s.n);
+    }
+
+    // 陈默：墙角站着（比坐着的学生高一截）
+    var cmY = 182, cmX = 448;
+    ctx.fillStyle = "#f2c292";
+    ctx.fillRect(cmX + 2, cmY, 5, 3);
+    ctx.fillStyle = "#d94f4f";
+    ctx.fillRect(cmX, cmY + 3, 9, 6);
+    ctx.fillStyle = "#a03333";
+    ctx.fillRect(cmX + 1, cmY + 9, 3, 4);
+    ctx.fillRect(cmX + 5, cmY + 9, 3, 4);
+    ctx.fillStyle = "rgba(255,120,120,.85)";
+    ctx.font = "9px monospace";
+    ctx.fillText("陈默（站着）", 400, 175);
+
+    // 第 47 个
+    if (S.stranger) {
+      var sx = 236, sy = 200;
+      ctx.fillStyle = "rgba(255,255,255,.06)";
+      ctx.fillRect(sx - 6, sy - 6, 22, 30);
+      ctx.fillStyle = "#d8d8d8";
+      ctx.fillRect(sx + 3, sy, 6, 4);
+      ctx.fillStyle = "#9a9a9a";
+      ctx.fillRect(sx, sy + 4, 12, 9);
+      ctx.fillStyle = "#5a5a5a";
+      ctx.fillRect(sx + 1, sy + 13, 4, 6);
+      ctx.fillRect(sx + 7, sy + 13, 4, 6);
+      ctx.fillStyle = "#000";
+      ctx.fillRect(sx + 4, sy + 1, 1, 1);
+      ctx.fillRect(sx + 7, sy + 1, 1, 1);
+      ctx.fillStyle = "rgba(255,80,80,.9)";
+      ctx.fillRect(sx - 6, sy + 22, 24, 1);
+      ctx.font = "9px monospace";
+      ctx.fillText("未登记", sx - 4, sy + 34);
+    }
+
+    // 地板
+    ctx.fillStyle = "#051005";
+    ctx.fillRect(0, 232, W, H - 232);
+    ctx.fillStyle = "rgba(0,255,0,.25)";
+    ctx.fillRect(0, 232, W, 1);
+  }
+
+  // ---------- 界面 ----------
+  function setClock() {
+    var s = String(Math.floor(S.time / 100)).padStart(2, "0") + ":" + String(S.time % 100).padStart(2, "0");
+    mclockEl.textContent = s;
+    clockEl.textContent = s;
+  }
+
+  function addMsg(text, type) {
+    var d = document.createElement("div");
+    d.className = "message " + type;
+    d.textContent = text;
+    chatEl.appendChild(d);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+
+  function addSysRed(text) {
+    var d = document.createElement("div");
+    d.className = "message sysred";
+    d.textContent = text;
+    chatEl.appendChild(d);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+
+  function setChoices(list) {
+    choicesEl.innerHTML = "";
+    list.forEach(function (item) {
+      var b = document.createElement("button");
+      b.className = "choice-btn" + (item.danger ? " danger" : "");
+      b.textContent = item.text;
+      b.onclick = function () { tone(520, 0.06, "square", 0.04); buzz(25); item.action(); };
+      choicesEl.appendChild(b);
+    });
+  }
+
+  function clearChoices() { choicesEl.innerHTML = ""; }
+
+  function glitch(ms) {
+    if (S.glitch) return;
+    S.glitch = true;
+    mScreen.classList.add("glitch");
+    noise(0.5);
+    setTimeout(function () { mScreen.classList.remove("glitch"); S.glitch = false; }, ms || 700);
+  }
+
+  // ---------- 剧情 ----------
+  function scene0() {
+    addMsg("系统：您收到一条家校通提醒", "system");
+    addMsg("王老师：陈默妈妈您好，陈默晚自习期间持续趴桌，状态不太好。", "teacher");
+    addMsg("王老师：刚才查寝系统显示他未就寝，但宿舍老师说他已经回寝了。", "teacher");
+    addMsg("我：王老师，监控里他还站在教室墙角。", "me");
+    addMsg("王老师：您是不是看错了？晚自习结束后学生都已经离开教室了。", "teacher");
+
+    setChoices([
+      { text: "我再看一下监控", action: function () {
+          addMsg("我：我再看一下监控。", "me");
+          S.time += 10; setClock();
+          glitch(900);
+          setTimeout(scene1, 1500);
+        }
+      },
+      { text: "我打给陈默", danger: true, action: function () {
+          addMsg("我：陈默，你在哪？", "me");
+          S.time += 10; setClock();
+          setTimeout(function () {
+            addMsg("陈默：妈，我洗漱完上床了。", "chenmo");
+            sceneCall();
+          }, 1100);
+        }
+      }
+    ]);
+  }
+
+  function sceneCall() {
+    setChoices([
+      { text: "你没在床上。监控里你还站在墙角", action: function () {
+          addMsg("我：你没在床上。监控里你还站在墙角。", "me");
+          S.time += 20; setClock();
+          setTimeout(scene1, 1500);
+        }
+      },
+      { text: "我现在去学校找你", danger: true, action: function () {
+          addMsg("我：我现在去学校找你。", "me");
+          S.time += 20; setClock();
+          setTimeout(function () {
+            addMsg("陈默：别来。", "chenmo");
+            setTimeout(scene1, 1400);
+          }, 900);
+        }
+      }
+    ]);
+  }
+
+  function scene1() {
+    addMsg("王老师：陈默妈妈，全班已就寝。", "teacher");
+    setChoices([
+      { text: "全班已就寝？", action: function () {
+          addMsg("我：全班已就寝？", "me");
+          S.time = 2230; setClock();
+          setTimeout(scene2, 900);
+        }
+      },
+      { text: "请老师现在去教室看一眼", danger: true, action: function () {
+          addMsg("我：请老师现在去教室看一眼。", "me");
+          S.time = 2230; setClock();
+          setTimeout(function () {
+            addMsg("王老师：我就在教室门口。灯关着，一个人都没有。", "teacher");
+            setTimeout(scene2, 1400);
+          }, 1100);
+        }
+      }
+    ]);
+  }
+
+  function scene2() {
+    addMsg("系统：AI在室学生 46/应到46。", "system");
+    setChoices([
+      { text: "我数一数", action: function () { startCount(); } }
+    ]);
+  }
+
+  function startCount() {
+    addMsg("我：不可能。我一个一个数。", "me");
+    clearChoices();
+    S.counting = true;
+    S.lit = 0;
+    mScreen.classList.add("tap-hint");
+    addSysRed("点击画面 · 清点人数");
+    cv.addEventListener("touchstart", onTap, { passive: true });
+    cv.addEventListener("click", onTap);
+  }
+
+  function onTap() {
+    if (!S.counting || S.allLit) return;
+    var idx = S.lit;
+    if (idx >= S.seats.length) return;
+    S.seats[idx].n = idx + 1;
+    S.lit++;
+    tone(440 + idx * 12, 0.05, "square", 0.035);
+    if (S.lit % 10 === 0) buzz(15);
+    draw();
+
+    if (S.lit >= 46) {
+      S.allLit = true;
+      S.counting = false;
+      mScreen.classList.remove("tap-hint");
+      cv.removeEventListener("touchstart", onTap);
+      cv.removeEventListener("click", onTap);
+      setTimeout(countDone, 900);
+    }
+  }
+
+  function countDone() {
+    countEl.textContent = "46";
+    addMsg("系统：清点完成。全员在座。", "system");
+    setTimeout(function () {
+      glitch(600);
+      addSysRed("检测到新增人员 1 · 未登记");
+      S.stranger = true;
+      draw();
+      buzz([120, 80, 200]);
+      noise(0.8, 0.4);
+      setTimeout(function () {
+        addMsg("陈默：妈，你回头看。", "chenmo");
+        buzz(300);
+        setTimeout(function () { finish(); }, 1800);
+      }, 2200);
+    }, 1400);
+  }
+
+  function finish() {
+    document.getElementById("endTitle").textContent = "已就寝";
+    document.getElementById("endBody").innerHTML =
+      "监控显示：AI在室学生 46/46。<br>" +
+      "所有学生都端端正正坐在位子上。<br>" +
+      "但您的孩子，并不在其中。<br><br>" +
+      "第 47 个，是正在数人的你。<br>" +
+      "<span style='color:#777'>您也被记录在监控里。</span>";
+    endingEl.classList.remove("hidden");
+    tone(70, 0.8, "sawtooth", 0.05);
+  }
+
+  // ---------- 启动 ----------
+  buildSeats();
+  draw();
+  setClock();
+
+  document.getElementById("enterBtn").addEventListener("click", function () {
+    initAudio();
+    tone(880, 0.08, "square", 0.05);
+    document.getElementById("startMask").classList.add("hidden");
+    scene0();
+  });
+
+  // 首屏也让画面动一点：轻微闪烁
+  setInterval(function () {
+    if (!S.stranger) {
+      ctx.fillStyle = "rgba(0,0,0,.03)";
+      ctx.fillRect(0, 0, W, H);
+    }
+  }, 400);
+
+})();
+</script>
+
+</body>
+</html>
