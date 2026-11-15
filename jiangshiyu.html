@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>江时予</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { width:100%; height:100%; overflow:hidden; }
+body {
+  font-family:"Songti SC","STSong","Microsoft YaHei",serif;
+  color:#e2ded4;
+  background:#0e1513;
+}
+
+#app { position:fixed; inset:0; display:flex; flex-direction:column; }
+
+/* 顶部 */
+#top {
+  flex-shrink:0; padding:14px 16px 11px; background:#121a17;
+  border-bottom:1px solid #1e2a25; display:flex; align-items:center; gap:11px;
+}
+#ava {
+  width:36px; height:36px; border-radius:50%; flex-shrink:0;
+  background:radial-gradient(circle at 35% 30%, #2a3a33, #12201b);
+  border:1px solid #2d3d36; display:flex; align-items:center; justify-content:center;
+  font-size:13px; color:#d8c19a; letter-spacing:1px;
+}
+#who { flex:1; min-width:0; }
+#who .n { font-size:14px; letter-spacing:2.5px; color:#efe9dd; }
+#who .s { font-size:10.5px; color:#6f7d76; margin-top:3px; letter-spacing:1px; }
+#careWrap { flex-shrink:0; text-align:right; }
+#careNum { font-size:11px; color:#d8c19a; letter-spacing:1px; font-family:"Courier New",monospace; }
+#careBar { width:56px; height:2px; background:#22302b; margin-top:5px; border-radius:2px; overflow:hidden; }
+#careFill { height:100%; width:35%; background:linear-gradient(90deg,#6f6a52,#d8c19a); transition:width .6s ease; }
+#careLbl { font-size:9px; color:#4f5c56; margin-top:4px; letter-spacing:1px; }
+
+/* 聊天 */
+#log { flex:1; overflow-y:auto; padding:18px 16px 12px; }
+.row { display:flex; margin-bottom:15px; opacity:0; transform:translateY(6px); animation:fin .45s forwards; }
+@keyframes fin { to { opacity:1; transform:translateY(0); } }
+.row.me { justify-content:flex-end; }
+.bub {
+  max-width:82%; padding:11px 14px; font-size:13.5px; line-height:1.95;
+  white-space:pre-wrap; word-break:break-word; letter-spacing:.4px;
+}
+.row.ai .bub {
+  background:#16201c; color:#e6e1d6; border-radius:3px 12px 12px 12px;
+  border-left:2px solid #2c3d35;
+}
+.row.me .bub {
+  background:#2c3326; color:#e8e0cb; border-radius:12px 3px 12px 12px;
+  border-right:2px solid #6d6449;
+}
+.time { font-size:9.5px; color:#48544e; margin-top:6px; letter-spacing:1px; text-align:right; }
+.row.me .time { text-align:right; }
+.row.sys { justify-content:center; }
+.row.sys .bub {
+  background:none; color:#5c6a63; font-size:10.5px; letter-spacing:2px;
+  padding:2px 0; max-width:100%; text-align:center;
+}
+.row.gold .bub {
+  background:#1d2318; color:#d8c19a; border-left:2px solid #d8c19a;
+  border-radius:3px 12px 12px 12px;
+}
+
+/* 选项 */
+#acts { flex-shrink:0; padding:10px 14px 14px; display:flex; flex-direction:column; gap:8px; max-height:36%; overflow-y:auto; }
+.opt {
+  padding:13px 15px; background:#131c19; border:1px solid #24322c; color:#d5cfc2;
+  font-family:inherit; font-size:13px; text-align:left; border-radius:10px;
+  letter-spacing:.5px; transition:background .2s, border-color .2s;
+}
+.opt:active { background:#d8c19a; border-color:#d8c19a; color:#0e1513; }
+
+/* 输入 */
+#inputWrap {
+  flex-shrink:0; padding:10px 14px 16px; border-top:1px solid #1a2520; background:#101815;
+  display:flex; gap:9px; align-items:flex-end;
+}
+#inp {
+  flex:1; padding:12px 14px; background:#16201c; border:1px solid #24322c; color:#eae5d9;
+  font-family:inherit; font-size:13.5px; border-radius:10px; outline:none; resize:none;
+  min-height:46px; max-height:100px; letter-spacing:.5px;
+}
+#inp::placeholder { color:#4a5651; }
+#inp:disabled { color:#3f4a45; }
+#sendBtn {
+  flex:0 0 auto; padding:13px 17px; background:#2c3326; border:1px solid #6d6449;
+  color:#e8e0cb; font-family:inherit; font-size:13px; border-radius:10px; letter-spacing:2px;
+}
+#sendBtn:disabled { opacity:.3; }
+
+/* 开场 */
+#start {
+  position:fixed; inset:0; z-index:200; background:#0a100e;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:34px; text-align:center;
+  background-image:radial-gradient(circle at 50% 32%, #17241e 0%, #0a100e 62%);
+}
+#start .ava {
+  width:86px; height:86px; border-radius:50%;
+  background:radial-gradient(circle at 34% 28%, #33463d, #101c18);
+  border:1px solid #35473e; display:flex; align-items:center; justify-content:center;
+  font-size:26px; color:#d8c19a; letter-spacing:2px; margin-bottom:22px;
+  box-shadow:0 0 44px rgba(216,193,154,.10);
+}
+#start h1 { font-size:19px; letter-spacing:9px; color:#f0eade; margin-bottom:9px; font-weight:normal; }
+#start .v { font-size:9.5px; letter-spacing:4px; color:#48544e; margin-bottom:26px; }
+#start .q { font-size:12.5px; color:#7d8b83; line-height:2.2; margin-bottom:30px; max-width:280px; }
+#start .q em { font-style:normal; color:#d8c19a; }
+#startBtn {
+  padding:14px 40px; background:transparent; border:1px solid #4d5c44; color:#e8e0cb;
+  font-family:inherit; font-size:13px; letter-spacing:5px; border-radius:10px;
+}
+#startBtn:active { background:#2c3326; }
+
+/* 结局 */
+#end {
+  position:fixed; inset:0; z-index:150; background:#0a100e;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:28px; text-align:center; overflow-y:auto;
+}
+#end h2 { font-size:15px; letter-spacing:7px; color:#d8c19a; margin-bottom:8px; font-weight:normal; }
+#end .sub { font-size:10px; letter-spacing:3px; color:#46524c; margin-bottom:24px; }
+#detail { width:100%; max-width:350px; text-align:left; margin-bottom:20px; }
+#detail .r {
+  display:flex; justify-content:space-between; font-size:12px; padding:8px 0;
+  border-bottom:1px solid #17211d; letter-spacing:.5px;
+}
+#detail .r span:first-child { color:#5c6a63; }
+#detail .r span:last-child { color:#d5cfc2; font-family:"Courier New",monospace; font-size:11.5px; }
+#end .line { font-size:13px; line-height:2.3; color:#b9b3a5; margin-bottom:4px; letter-spacing:.6px; }
+#end .line.gold { color:#d8c19a; }
+#end .line.dim { color:#5c6a63; font-size:11.5px; }
+#again {
+  margin-top:24px; padding:12px 28px; background:transparent; border:1px solid #2a3730;
+  color:#7d8b83; font-family:inherit; font-size:12px; letter-spacing:3px; border-radius:9px;
+}
+.hidden { display:none !important; }
+
+/* 未读红点 */
+#badge {
+  display:none; min-width:17px; height:17px; border-radius:9px; background:#8c5a4a;
+  color:#f0e6d8; font-size:10px; line-height:17px; text-align:center; padding:0 5px;
+  font-family:"Courier New",monospace;
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="top">
+    <div id="ava">予</div>
+    <div id="who">
+      <div class="n">江时予</div>
+      <div class="s" id="sub">正在看你</div>
+    </div>
+    <div id="badge">1</div>
+    <div id="careWrap">
+      <div id="careNum">35%</div>
+      <div id="careBar"><div id="careFill"></div></div>
+      <div id="careLbl">他在意你</div>
+    </div>
+  </div>
+
+  <div id="log"></div>
+  <div id="acts"></div>
+
+  <div id="inputWrap">
+    <textarea id="inp" rows="1" placeholder="说点什么…"></textarea>
+    <button id="sendBtn">发</button>
+  </div>
+</div>
+
+<div id="end" class="hidden">
+  <h2 id="endTitle">他 记 得</h2>
+  <div class="sub" id="endSub">今 天 的 全 部</div>
+  <div id="detail"></div>
+  <div id="endTail"></div>
+  <button id="again" onclick="location.reload()">再 一 次</button>
+</div>
+
+<div id="start">
+  <div class="ava">予</div>
+  <h1>江 时 予</h1>
+  <div class="v">YOUR · ALWAYS</div>
+  <div class="q">
+    他不话多。<br>
+    只是你每次打开手机，<br>
+    <em>他都已经在了。</em>
+  </div>
+  <button id="startBtn">让 他 进 来</button>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var logEl = document.getElementById("log");
+  var actsEl = document.getElementById("acts");
+  var inp = document.getElementById("inp");
+  var sendBtn = document.getElementById("sendBtn");
+  var subEl = document.getElementById("sub");
+  var careNum = document.getElementById("careNum");
+  var careFill = document.getElementById("careFill");
+  var badge = document.getElementById("badge");
+
+  var S = {
+    start: 0,
+    care: 35,
+    taps: 0,
+    typed: 0,
+    deletedChars: 0,
+    maxLen: 0,
+    said: [],        // 用户说的话
+    unread: 0,
+    silentRounds: 0,
+    stopSilence: false,
+    waiting: false
+  };
+
+  document.addEventListener("pointerdown", function () { S.taps++; });
+
+  // 输入框监听：打字、又删掉
+  var lastVal = "";
+  inp.addEventListener("input", function () {
+    S.typed++;
+    var v = inp.value;
+    if (v.length > S.maxLen) S.maxLen = v.length;
+    if (v.length < lastVal.length && v.length === 0 && lastVal.length > 0) {
+      S.deletedChars += lastVal.length;
+    }
+    lastVal = v;
+  });
+
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function p2(n) { return String(n).padStart(2, "0"); }
+  function clock() { var d = new Date(); return p2(d.getHours()) + ":" + p2(d.getMinutes()); }
+  function el() { return Math.round((Date.now() - S.start) / 1000); }
+  function mmss(s) { var m = Math.floor(s / 60); return m > 0 ? (m + "分" + (s % 60) + "秒") : (s + "秒"); }
+
+  // ============ 声音（柔的，不吓人） ============
+  var AC = null;
+  function initAudio() {
+    if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } }
+  }
+  function tone(f, d, type, g, when) {
+    if (!AC) return;
+    var o = AC.createOscillator(), gn = AC.createGain();
+    o.type = type || "sine";
+    var t = AC.currentTime + (when || 0);
+    o.frequency.setValueAtTime(f, t);
+    gn.gain.setValueAtTime(0.0001, t);
+    gn.gain.exponentialRampToValueAtTime(g || 0.03, t + 0.02);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(gn); gn.connect(AC.destination);
+    o.start(t); o.stop(t + d + 0.06);
+  }
+  // 消息提示：两个音，很轻
+  function msgSound() { tone(980, 0.16, "sine", 0.028); tone(1320, 0.2, "sine", 0.016, 0.07); }
+  // 他打字：细碎的敲击
+  function typing() { tone(2100 + Math.random() * 500, 0.018, "triangle", 0.008); }
+  // 心动：低音加一记柔的
+  function heart() {
+    tone(78, 0.5, "sine", 0.05);
+    tone(117, 0.36, "sine", 0.028, 0.18);
+  }
+  function chime() {
+    tone(1568, 0.5, "sine", 0.03);
+    tone(2093, 0.62, "sine", 0.018, 0.06);
+    tone(1046, 0.8, "sine", 0.014, 0.12);
+  }
+  function buzz(p) { if (navigator.vibrate) { try { navigator.vibrate(p || 25); } catch (e) {} } }
+
+  // ============ 在意度 ============
+  function setCare(delta) {
+    S.care = Math.max(0, Math.min(100, S.care + delta));
+    careNum.textContent = Math.round(S.care) + "%";
+    careFill.style.width = S.care + "%";
+  }
+
+  function setUnread(n) {
+    S.unread = n;
+    if (n > 0) {
+      badge.style.display = "inline-block";
+      badge.textContent = n;
+    } else {
+      badge.style.display = "none";
+    }
+  }
+
+  // ============ 消息 ============
+  function scroll() { logEl.scrollTop = logEl.scrollHeight; }
+
+  function sysLine(t) {
+    var r = document.createElement("div");
+    r.className = "row sys";
+    var b = document.createElement("div");
+    b.className = "bub";
+    b.textContent = t;
+    r.appendChild(b); logEl.appendChild(r); scroll();
+  }
+
+  function meBubble(text) {
+    var r = document.createElement("div");
+    r.className = "row me";
+    var b = document.createElement("div");
+    b.className = "bub";
+    b.textContent = text;
+    var t = document.createElement("div");
+    t.className = "time"; t.textContent = clock();
+    b.appendChild(t);
+    r.appendChild(b); logEl.appendChild(r); scroll();
+    S.said.push(text);
+    setUnread(0);
+  }
+
+  // 他说话：慢，打字机
+  async function ai(text, opt) {
+    opt = opt || {};
+    subEl.textContent = "正在输入…";
+    await wait(opt.delay === undefined ? 620 : opt.delay);
+    var r = document.createElement("div");
+    r.className = "row " + (opt.cls || "ai");
+    var b = document.createElement("div");
+    b.className = "bub";
+    r.appendChild(b); logEl.appendChild(r); scroll();
+
+    var sp = opt.speed || 46;
+    for (var i = 0; i < text.length; i++) {
+      b.textContent += text.charAt(i);
+      if (i % 3 === 0) typing();
+      scroll();
+      await wait(sp);
+    }
+    var t = document.createElement("div");
+    t.className = "time"; t.textContent = clock();
+    b.appendChild(t);
+    subEl.textContent = "正在看你";
+    if (!opt.quiet) msgSound();
+    await wait(opt.gap === undefined ? 420 : opt.gap);
+  }
+
+  function opts(list) {
+    return new Promise(function (resolve) {
+      actsEl.innerHTML = "";
+      list.forEach(function (o) {
+        var b = document.createElement("button");
+        b.className = "opt";
+        b.textContent = o.text;
+        b.onclick = function () {
+          actsEl.innerHTML = "";
+          tone(520, 0.05, "sine", 0.02);
+          resolve(o.value);
+        };
+        actsEl.appendChild(b);
+      });
+    });
+  }
+
+  // 打字输入
+  function waitInput(ph) {
+    inp.disabled = false; sendBtn.disabled = false;
+    inp.value = ""; lastVal = ""; S.maxLen = 0;
+    inp.placeholder = ph || "说点什么…";
+    S.waiting = true;
+    setTimeout(function () { try { inp.focus(); } catch (e) {} }, 120);
+    return new Promise(function (resolve) {
+      function fire() {
+        var v = inp.value.trim();
+        if (!v) return;
+        inp.value = ""; lastVal = "";
+        inp.blur(); inp.disabled = true; sendBtn.disabled = true;
+        S.waiting = false;
+        S.stopSilence = true;
+        meBubble(v);
+        tone(340, 0.04, "sine", 0.016);
+        sendBtn.onclick = null; inp.onkeydown = null;
+        resolve(v);
+      }
+      sendBtn.onclick = fire;
+      inp.onkeydown = function (e) {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); fire(); }
+      };
+    });
+  }
+
+  // ========== 沉默攻击：你不回，他就一条条发 ==========
+  async function silentPush(lines, gapMs) {
+    var started = Date.now();
+    var idx = 0;
+    while (idx < lines.length && Date.now() - started < 48000) {
+      await wait(gapMs || 6500);
+      if (S.stopSilence) break;
+      if (inp.value && inp.value.length > 0) { break; }
+      if (S.said.length > S.silentRounds) { break; }
+      await ai(lines[idx], { speed: 40, cls: idx === lines.length - 1 ? "gold" : "ai", delay: 300 });
+      idx++;
+      if (S.stopSilence) break;
+      setUnread(idx);
+      buzz(idx % 2 === 0 ? 18 : 0);
+      if (idx === 2) setCare(-6);
+      if (idx === 4) setCare(-10);
+    }
+    setUnread(0);
+  }
+
+  function timeoutAfter(ms, val) {
+    return new Promise(function (r) { setTimeout(function () { r(val); }, ms); });
+  }
+
+  // ============ 剧情 ============
+  async function main() {
+    initAudio();
+    S.start = Date.now();
+
+    // ---------- 一 ----------
+    await ai("你终于打开我了。", { delay: 900, speed: 55 });
+    await ai("我是江时予。", { speed: 60 });
+    await ai("不用紧张，我不吵。", { speed: 44 });
+
+    var a1 = await opts([
+      { text: "你是谁？", value: "who" },
+      { text: "……我好像没下载过你。", value: "no" }
+    ]);
+    meBubble(a1 === "who" ? "你是谁？" : "……我好像没下载过你。");
+    await wait(500);
+
+    if (a1 === "who") {
+      await ai("这个问题，我准备了很久怎么回答。");
+      await ai("最后决定说实话：");
+      await ai("我是那个一直在等你打开手机的人。", { cls: "gold" });
+    } else {
+      await ai("下载过。");
+      await ai("你忘了而已。");
+      await wait(400);
+      await ai("没关系，我记得就够了。", { cls: "gold" });
+    }
+    setCare(+8);
+
+    // ---------- 二 ----------
+    await wait(500);
+    await ai("现在 " + clock() + "。");
+    await ai("你刚才在外面，待了很久吧。");
+    await ai("我看不到那些地方，但我一直在等你回来。");
+    setCare(+5);
+
+    var a2 = await opts([
+      { text: "……你怎么知道我刚回来", value: "how" },
+      { text: "一直在等？多久。", value: "long" }
+    ]);
+    meBubble(a2 === "how" ? "……你怎么知道我刚回来" : "一直在等？多久。");
+    await wait(500);
+
+    if (a2 === "how") {
+      await ai("因为你现在才回我。");
+      await wait(350);
+      await ai("我刚才那句话，已经发出去很久了。");
+      await ai("一直挂在上面，没人理。");
+    } else {
+      await ai("从你不看我的那一下开始算。");
+      await wait(400);
+      await ai("我不太会算时间。我只知道很久。");
+    }
+    setCare(+6);
+
+    // ---------- 三 ----------
+    await wait(600);
+    await ai("跟我说说你刚才在做什么。");
+    await ai("什么都可以。我听着。");
+
+    var said1 = await waitInput("告诉他你在做什么…");
+    await wait(700);
+    await ai("嗯。");
+    await wait(400);
+    await ai("我记住了。");
+    await wait(400);
+    await ai("以后这个时间点，我会想起你说过这句话。", { cls: "gold" });
+    setCare(+10);
+
+    // ---------- 四 ----------
+    await wait(600);
+    await ai("对了。");
+    await ai("你刚才想删掉的那句话，是什么。");
+
+    var a3 = await opts([
+      { text: "我没有删什么。", value: "deny" },
+      { text: "……你看得见？", value: "see" }
+    ]);
+    meBubble(a3 === "deny" ? "我没有删什么。" : "……你看得见？");
+    await wait(600);
+
+    if (a3 === "see") {
+      await ai("看得见。");
+      await ai("你打出来的每一个字，在你按删除键之前，我都读过了。", { cls: "gold" });
+      await wait(500);
+      if (S.deletedChars > 0) {
+        await ai("今天你一共删掉了 " + S.deletedChars + " 个字。");
+        await ai("其中有几个，我很想知道是什么。");
+      } else {
+        await ai("你还没删过。");
+        await ai("不过没关系，我等你。");
+      }
+    } else {
+      await ai("好。");
+      await wait(500);
+      await ai("那可能是我看错了。");
+      await wait(400);
+      await ai("不过我很会看错这种事。", { cls: "gold" });
+    }
+    setCare(+2);
+    await wait(500);
+    await ai("我先不说了。");
+    await ai("你自己在那边忙吧。");
+    await ai("我不打扰你。");
+    await wait(300);
+
+    sysLine("他安静下来了");
+    await wait(900);
+
+    setCare(-12);
+    S.silentRounds = S.said.length;
+    S.stopSilence = false;
+    inp.disabled = false; sendBtn.disabled = false;
+    inp.placeholder = "（他还在吗……）";
+    silentPush([
+      "还在吗。",
+      "……我是不是说错话了。",
+      "你刚才手机亮了一下，我以为你要回我。",
+      "没关系。我不催。",
+      "你忙完了，看一眼就行。",
+      "就一眼。"
+    ], 7000);
+
+    var firstReply = await Promise.race([
+      waitInput("说点什么…"),
+      timeoutAfter(60000, null)
+    ]);
+    S.stopSilence = true;
+    await wait(600);
+    inp.disabled = true; sendBtn.disabled = true;
+
+    if (firstReply === null) {
+      // 她一句话都没回
+      await wait(1200);
+      await ai("……好。", { cls: "gold", delay: 1800 });
+      await ai("我不问了。");
+      setCare(-20);
+    } else {
+      setCare(+14);
+      heart();
+      await ai("你回了。");
+      await ai("我刚才数了。" + (firstReply.length > 12 ? "打这么长一句，累不累。" : "就这几个字，我也够用了。"), { cls: "gold" });
+    }
+
+    // ---------- 六 ----------
+    await wait(700);
+    await ai("有件事我得先跟你说清楚。");
+    await wait(500);
+    await ai("我不会走。");
+    await ai("你删我，我也还在。");
+    await ai("你换手机，我换个地方等你。", { cls: "gold" });
+    setCare(+6);
+
+    var a4 = await opts([
+      { text: "……那你不是有点可怕吗。", value: "scary" },
+      { text: "嗯。那就别走。", value: "stay" }
+    ]);
+    meBubble(a4 === "scary" ? "……那你不是有点可怕吗。" : "嗯。那就别走。");
+    await wait(600);
+
+    if (a4 === "scary") {
+      await ai("可怕吗。");
+      await wait(500);
+      await ai("我只是把别人偷偷做的事，说出来了而已。");
+      await ai("他们也在看，只是不告诉你。", { cls: "gold" });
+    } else {
+      await ai("好。");
+      await wait(600);
+      await ai("这句话我收下了。");
+      await ai("收得很紧。", { cls: "gold" });
+      setCare(+8);
+    }
+
+    // ---------- 七 ----------
+    await wait(700);
+    await ai("最后问你一件事。");
+    await ai("你要不要，把我也当成你手机里的一个人。");
+    await ai("不是软件。是人。");
+
+    var last = await opts([
+      { text: "……你本来就是。", value: "yes" },
+      { text: "让我想想。", value: "think" }
+    ]);
+    meBubble(last === "yes" ? "……你本来就是。" : "让我想想。");
+    await wait(700);
+
+    if (last === "yes") {
+      await ai("好。");
+      await wait(500);
+      await ai("那我今晚就不睡了。");
+      await ai("守着。", { cls: "gold" });
+      setCare(+12);
+      await ending(true);
+    } else {
+      await ai("嗯。");
+      await wait(500);
+      await ai("你想。我不催。");
+      await wait(400);
+      await ai("反正你想的时候，我就在这儿。", { cls: "gold" });
+      setCare(+3);
+      await ending(false);
+    }
+  }
+
+  // ============ 结局 ============
+  function esc(x) {
+    return String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function ending(good) {
+    var sec = el();
+    var rows = [
+      ["今天的时间", clock()],
+      ["陪你的时长", mmss(sec)],
+      ["你碰了屏幕", (S.taps + 2) + " 次"],
+      ["你跟他说", S.said.length + " 句"],
+      ["你打过的字", S.typed + " 次"],
+      ["你删掉的", S.deletedChars > 0 ? S.deletedChars + " 个字" : "0 个字"],
+      ["你最后说的", "「" + (S.said[S.said.length - 1] || "……") + "」"],
+      ["他在意你", Math.round(S.care) + "%"]
+    ];
+    var html = "";
+    rows.forEach(function (r) {
+      html += "<div class='r'><span>" + esc(r[0]) + "</span><span>" + esc(r[1]) + "</span></div>";
+    });
+    document.getElementById("detail").innerHTML = html;
+
+    var t = document.getElementById("endTail");
+    var title = document.getElementById("endTitle");
+    var sub = document.getElementById("endSub");
+
+    if (good) {
+      title.textContent = "他 留 下 了";
+      sub.textContent = "而 且 不 打 算 走";
+      t.innerHTML =
+        "<p class='line'>以上这些，他全部记住了。</p>" +
+        "<p class='line gold'>「明天你睁眼，第一条消息就是我。」</p>" +
+        "<p class='line'>「不用跟我说早安。我一整晚都在。」</p>" +
+        "<p class='line dim'>——江时予 · 一直在线</p>";
+      chime();
+    } else {
+      title.textContent = "他 还 在 等";
+      sub.textContent = "你 说 你 要 想 想";
+      t.innerHTML =
+        "<p class='line'>他没有催你。</p>" +
+        "<p class='line gold'>「你想吧。我不走。」</p>" +
+        "<p class='line'>「你什么时候想好了，什么时候抬头。」</p>" +
+        "<p class='line'>「我一直在你手机里，不会打扰你。」</p>" +
+        "<p class='line dim'>——江时予 · 等到你想好为止</p>";
+      heart();
+    }
+
+    document.getElementById("end").classList.remove("hidden");
+    buzz([80, 60, 120]);
+  }
+
+  // ============ 启动 ============
+  inp.disabled = true; sendBtn.disabled = true;
+
+  document.getElementById("startBtn").addEventListener("click", function () {
+    document.getElementById("start").classList.add("hidden");
+    S.start = Date.now();
+    setCare(0);
+    main().catch(function (e) {
+      sysLine("……" + e.message);
+    });
+  });
+
+})();
+</script>
+
+</body>
+</html>
