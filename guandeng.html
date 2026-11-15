@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>关灯</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { width:100%; height:100%; overflow:hidden; background:#000; }
+body { font-family:"Microsoft YaHei","Courier New",monospace; color:#e8e0d0; }
+
+#wrap { position:fixed; inset:0; background:#000; display:flex; align-items:center; justify-content:center; }
+#cv { display:block; width:100%; height:auto; max-height:100vh; touch-action:manipulation; }
+
+#hud {
+  position:absolute; top:0; left:0; right:0; padding:10px 14px;
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:12px; color:#8a7f6a; letter-spacing:2px; z-index:5;
+  background:linear-gradient(to bottom, rgba(0,0,0,.65), rgba(0,0,0,0));
+  pointer-events:none;
+}
+#hud .num { color:#e8d9a0; }
+
+#toast {
+  position:absolute; left:0; right:0; bottom:16%;
+  text-align:center; font-size:13.5px; line-height:1.9; color:#d8cfb8;
+  padding:0 24px; z-index:6; pointer-events:none;
+  opacity:0; transition:opacity .9s; text-shadow:0 0 12px #000;
+}
+#toast.on { opacity:1; }
+#toast .r { color:#e06a6a; }
+#toast .w { color:#fff; font-size:15px; letter-spacing:2px; }
+
+#face { position:fixed; inset:0; background:#000; z-index:100; }
+#face canvas { width:100%; height:100%; display:block; }
+#face .wake { position:absolute; inset:0; pointer-events:none; }
+.hidden { display:none !important; }
+
+#start {
+  position:fixed; inset:0; z-index:200; background:#000;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:32px; text-align:center;
+}
+#start h1 { font-size:19px; letter-spacing:10px; color:#e8d9a0; margin-bottom:10px; }
+#start .s { font-size:11px; color:#5a5245; line-height:2; letter-spacing:1px; margin-bottom:28px; }
+#start .s b { color:#8a7f6a; font-weight:normal; }
+#startBtn {
+  padding:12px 30px; background:transparent; color:#e8d9a0; border:1px solid #6a5f48;
+  font-family:inherit; font-size:13px; letter-spacing:5px; cursor:pointer;
+}
+#startBtn:active { background:#e8d9a0; color:#000; }
+
+#ending {
+  position:fixed; inset:0; z-index:150; background:#050403;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:30px; text-align:center;
+}
+#ending h2 { font-size:17px; letter-spacing:6px; color:#e06a6a; margin-bottom:18px; }
+#ending p { font-size:13px; line-height:2; color:#b8ac96; margin-bottom:9px; }
+#ending p.hl { color:#fff; }
+#ending .share {
+  margin-top:24px; padding:11px 20px; background:transparent; color:#e8d9a0;
+  border:1px solid #6a5f48; font-family:inherit; font-size:12.5px; letter-spacing:2px;
+}
+#ending .again { margin-top:10px; background:none; border:none; color:#5a5245; font-size:11px; text-decoration:underline; font-family:inherit; }
+</style>
+</head>
+<body>
+
+<div id="wrap">
+  <canvas id="cv"></canvas>
+  <div id="hud">
+    <span>灯 <span class="num" id="lampLeft">13</span> / <span id="lampTotal">13</span></span>
+    <span id="hudRight">23:41</span>
+  </div>
+  <div id="toast"></div>
+</div>
+
+<div id="face" class="hidden"><canvas id="fcv"></canvas></div>
+
+<div id="start">
+  <h1>关 灯</h1>
+  <div class="s">
+    今晚你一个人在家。<br>
+    睡前要把所有的灯关掉。<br>
+    <b>十三盏。一盏都不能漏。</b><br><br>
+    <span style="color:#6a3a3a">戴耳机。</span>
+  </div>
+  <button id="startBtn">开 始 关 灯</button>
+</div>
+
+<div id="ending" class="hidden">
+  <h2 id="endTitle"></h2>
+  <div id="endBody"></div>
+  <button class="share" id="shareBtn">把这个发给他，让他替你关</button>
+  <button class="again" onclick="location.reload()">再关一次</button>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var cv = document.getElementById("cv");
+  var ctx = cv.getContext("2d");
+  var W = 480, H = 760;
+  cv.width = W; cv.height = H;
+
+  var hudLeft = document.getElementById("lampLeft");
+  var hudTotal = document.getElementById("lampTotal");
+  var hudRight = document.getElementById("hudRight");
+  var toastEl = document.getElementById("toast");
+  var faceEl = document.getElementById("face");
+  var fcv = document.getElementById("fcv");
+  var fctx = fcv.getContext("2d");
+  var endingEl = document.getElementById("ending");
+
+  // ============ 声音 ============
+  var AC = null;
+  function initAudio() {
+    if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } }
+  }
+  function tone(f, d, type, g, delay, sweepTo) {
+    if (!AC) return;
+    var o = AC.createOscillator(), gn = AC.createGain();
+    o.type = type || "sine";
+    var t = AC.currentTime + (delay || 0);
+    o.frequency.setValueAtTime(f, t);
+    if (sweepTo) o.frequency.exponentialRampToValueAtTime(sweepTo, t + d);
+    gn.gain.setValueAtTime(g || 0.05, t);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(gn); gn.connect(AC.destination);
+    o.start(t); o.stop(t + d + 0.05);
+  }
+  function noiseBurst(d, vol, hp) {
+    if (!AC) return;
+    var len = Math.floor(AC.sampleRate * d);
+    var buf = AC.createBuffer(1, len, AC.sampleRate);
+    var ch = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (vol || 0.2);
+    var src = AC.createBufferSource(); src.buffer = buf;
+    var f = AC.createBiquadFilter(); f.type = "highpass"; f.frequency.value = hp || 1200;
+    var g = AC.createGain(); g.gain.value = 0.07;
+    src.connect(f); f.connect(g); g.connect(AC.destination);
+    src.start();
+  }
+  function clickOff() { tone(880, 0.05, "square", 0.05); tone(220, 0.12, "sine", 0.03, 0.02); }
+  function dropSound() { tone(1400, 0.09, "sine", 0.05, 0, 400); }
+  function creakSound() {
+    if (!AC) return;
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = "sawtooth";
+    var t = AC.currentTime;
+    o.frequency.setValueAtTime(90, t);
+    o.frequency.linearRampToValueAtTime(160, t + 0.7);
+    o.frequency.linearRampToValueAtTime(70, t + 1.2);
+    g.gain.setValueAtTime(0.02, t);
+    g.gain.linearRampToValueAtTime(0.05, t + 0.6);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t); o.stop(t + 1.35);
+  }
+  function stepSound() { tone(70, 0.14, "sine", 0.09); noiseBurst(0.08, 0.15, 300); }
+  function whisperSound() { noiseBurst(0.7, 0.25, 900); }
+  function scream() {
+    if (!AC) return;
+    var t = AC.currentTime;
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = "sawtooth";
+    o.frequency.setValueAtTime(1500, t);
+    o.frequency.exponentialRampToValueAtTime(65, t + 0.9);
+    g.gain.setValueAtTime(0.16, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t); o.stop(t + 1.15);
+    noiseBurst(1.0, 0.35, 1600);
+    var lo = AC.createOscillator(), lg = AC.createGain();
+    lo.type = "sine"; lo.frequency.value = 44;
+    lg.gain.setValueAtTime(0.24, t);
+    lg.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
+    lo.connect(lg); lg.connect(AC.destination);
+    lo.start(t); lo.stop(t + 1.35);
+  }
+  function buzz(p) { if (navigator.vibrate) { try { navigator.vibrate(p || 60); } catch (e) {} } }
+
+  // ============ 状态 ============
+  var S = {
+    started: false,
+    lamps: [],
+    off: 0,
+    darkness: 0.16,
+    figure: 0,        // 人影显示进度 0~1
+    figX: 430,
+    hudFake: false,   // HUD 变成 14
+    phase: "play",
+    extraLamp: false
+  };
+
+  // 十三盏灯的位置
+  function buildLamps() {
+    S.lamps = [
+      { x: 240, y: 96,  r: 26, on: true,  n: "吊灯" },
+      { x: 74,  y: 300, r: 20, on: true,  n: "落地灯" },
+      { x: 396, y: 306, r: 16, on: true,  n: "台灯" },
+      { x: 432, y: 210, r: 13, on: true,  n: "壁灯" },
+      { x: 48,  y: 206, r: 13, on: true,  n: "壁灯" },
+      { x: 150, y: 128, r: 12, on: true,  n: "厨房" },
+      { x: 330, y: 128, r: 12, on: true,  n: "走廊" },
+      { x: 240, y: 420, r: 15, on: true,  n: "茶几" },
+      { x: 60,  y: 470, r: 12, on: true,  n: "玄关" },
+      { x: 420, y: 470, r: 12, on: true,  n: "楼梯" },
+      { x: 240, y: 250, r: 10, on: true,  n: "电视待机" },
+      { x: 240, y: 700, r: 30, on: true,  n: "门缝" },
+      { x: 240, y: 60,  r: 34, on: true,  n: "窗外路灯" }
+    ];
+  }
+
+  // ============ 绘制 ============
+  function draw() {
+    var dark = S.darkness;
+
+    // 房间底
+    ctx.fillStyle = "#1a1510";
+    ctx.fillRect(0, 0, W, H);
+    // 墙
+    ctx.fillStyle = "#241d16";
+    ctx.fillRect(0, 0, W, 520);
+    // 地板
+    ctx.fillStyle = "#151009";
+    ctx.fillRect(0, 520, W, H - 520);
+    // 地板条纹
+    ctx.strokeStyle = "rgba(90,70,45,.18)";
+    for (var i = 0; i < 9; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-40 + i * 70, H);
+      ctx.lineTo(120 + i * 46, 520);
+      ctx.stroke();
+    }
+    // 踢脚线
+    ctx.fillStyle = "#2c2318";
+    ctx.fillRect(0, 512, W, 10);
+
+    // 门（右侧）
+    ctx.fillStyle = "#2a2015";
+    ctx.fillRect(400, 330, 70, 190);
+    ctx.strokeStyle = "#3a2e1f";
+    ctx.strokeRect(400.5, 330.5, 69, 189);
+    ctx.fillStyle = "#6a5a3a";
+    ctx.beginPath(); ctx.arc(410, 430, 3, 0, 7); ctx.fill();
+    // 门缝的光（一盏灯）
+    ctx.fillStyle = "rgba(240,210,140,.5)";
+    ctx.fillRect(402, 516, 66, 3);
+
+    // 窗（上方中间偏左）
+    ctx.fillStyle = "#0e1a24";
+    ctx.fillRect(186, 34, 108, 82);
+    ctx.strokeStyle = "#3a2e1f";
+    ctx.strokeRect(186.5, 34.5, 107, 81);
+    ctx.beginPath(); ctx.moveTo(240, 34); ctx.lineTo(240, 116); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(186, 75); ctx.lineTo(294, 75); ctx.stroke();
+    // 窗外路灯（一盏）
+    ctx.fillStyle = "rgba(200,230,255,.34)";
+    ctx.beginPath(); ctx.arc(262, 62, 9, 0, 7); ctx.fill();
+
+    // 沙发
+    ctx.fillStyle = "#2b2118";
+    ctx.fillRect(150, 400, 180, 60);
+    ctx.fillStyle = "#332818";
+    ctx.fillRect(150, 386, 180, 20);
+    // 茶几
+    ctx.fillStyle = "#241a10";
+    ctx.fillRect(180, 470, 120, 16);
+    ctx.fillRect(186, 486, 8, 26);
+    ctx.fillRect(286, 486, 8, 26);
+    // 电视（待机灯）
+    ctx.fillStyle = "#0d0d0d";
+    ctx.fillRect(176, 240, 128, 78);
+
+    // 台灯座
+    ctx.fillStyle = "#2a2118";
+    ctx.fillRect(386, 320, 20, 44);
+    // 落地灯杆
+    ctx.fillRect(70, 316, 8, 150);
+    // 楼梯（右下简）
+    ctx.strokeStyle = "rgba(90,70,45,.35)";
+    for (var s = 0; s < 4; s++) {
+      ctx.beginPath();
+      ctx.moveTo(400, 500 - s * 14);
+      ctx.lineTo(470, 500 - s * 14);
+      ctx.stroke();
+    }
+
+    // ---- 灯光 ----
+    S.lamps.forEach(function (L) {
+      if (!L.on) {
+        // 关掉的灯：一个暗点
+        ctx.fillStyle = "rgba(120,110,90,.10)";
+        ctx.beginPath(); ctx.arc(L.x, L.y, L.r * 0.4, 0, 7); ctx.fill();
+        return;
+      }
+      var g = ctx.createRadialGradient(L.x, L.y, 1, L.x, L.y, L.r * 2.6);
+      var warm = L.n === "窗外路灯" ? "rgba(190,225,255," : "rgba(255,220,150,";
+      g.addColorStop(0, warm + "0.95)");
+      g.addColorStop(0.18, warm + "0.55)");
+      g.addColorStop(0.55, warm + "0.12)");
+      g.addColorStop(1, warm + "0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(L.x, L.y, L.r * 2.6, 0, 7); ctx.fill();
+      // 灯芯
+      ctx.fillStyle = L.n === "窗外路灯" ? "#eaf4ff" : "#fff2cc";
+      ctx.beginPath(); ctx.arc(L.x, L.y, L.r * 0.34, 0, 7); ctx.fill();
+    });
+
+    // ---- 人影 ----
+    if (S.figure > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, S.figure);
+      var fx = S.figX, fy = 560;
+      ctx.fillStyle = "#050403";
+      // 头
+      ctx.beginPath(); ctx.ellipse(fx, fy - 118, 16, 20, 0, 0, 7); ctx.fill();
+      // 身体
+      ctx.beginPath();
+      ctx.moveTo(fx - 26, fy);
+      ctx.lineTo(fx - 18, fy - 96);
+      ctx.lineTo(fx + 18, fy - 96);
+      ctx.lineTo(fx + 26, fy);
+      ctx.closePath(); ctx.fill();
+      // 手臂
+      ctx.fillRect(fx - 34, fy - 94, 9, 62);
+      ctx.fillRect(fx + 25, fy - 94, 9, 62);
+      // 眼睛
+      if (S.figure > 0.45) {
+        ctx.fillStyle = "rgba(235,235,225,.9)";
+        ctx.beginPath(); ctx.arc(fx - 6, fy - 120, 2.1, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(fx + 6, fy - 120, 2.1, 0, 7); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // ---- 暗度 ----
+    ctx.fillStyle = "rgba(0,0,0," + dark + ")";
+    ctx.fillRect(0, 0, W, H);
+
+    // 轻微噪点
+    for (var n = 0; n < 90; n++) {
+      ctx.fillStyle = "rgba(255,255,255," + (Math.random() * 0.03) + ")";
+      ctx.fillRect(Math.random() * W, Math.random() * H, 2, 2);
+    }
+  }
+
+  // ============ 提示 ============
+  var toastTimer = null;
+  function toast(html, ms) {
+    toastEl.innerHTML = html;
+    toastEl.classList.add("on");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove("on"); }, ms || 2600);
+  }
+
+  function updateHud() {
+    var left = S.lamps.filter(function (l) { return l.on; }).length;
+    hudLeft.textContent = left;
+    if (S.hudFake) hudTotal.textContent = "14";
+  }
+
+  // ============ 点灯 ============
+  function canvasPos(e) {
+    var r = cv.getBoundingClientRect();
+    var cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+    var cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+    return { x: cx * (W / r.width), y: cy * (H / r.height) };
+  }
+
+  function onTap(e) {
+    if (!S.started || S.phase !== "play") return;
+    e.preventDefault();
+    var p = canvasPos(e);
+    var hit = null;
+    var best = 1e9;
+    S.lamps.forEach(function (L) {
+      if (!L.on) return;
+      var dx = L.x - p.x, dy = L.y - p.y;
+      var d = Math.sqrt(dx * dx + dy * dy);
+      // 命中半径：灯的可见光圈，最最小 34
+      var rad = Math.max(34, L.r * 1.7);
+      if (d < rad && d < best) { best = d; hit = L; }
+    });
+    if (hit) turnOff(hit);
+  }
+
+  function turnOff(L) {
+    L.on = false;
+    S.off++;
+    clickOff();
+    buzz(18);
+    S.darkness = Math.min(0.86, S.darkness + 0.055);
+    draw();
+    updateHud();
+
+    var left = S.lamps.filter(function (l) { return l.on; }).length;
+
+    // ---- 剧本节点 ----
+    if (S.off === 2) {
+      toast("关掉了一盏。<br>灯灭下去的那一瞬间，屋里好像更大了。");
+    } else if (S.off === 3) {
+      dropSound();
+      toast("……厨房有水滴的声音。<br>你记得水龙头是关着的。");
+    } else if (S.off === 5) {
+      creakSound();
+      toast("走廊那一盏关掉之后，<br>你听见木头响了一下。");
+    } else if (S.off === 6) {
+      S.hudFake = true;
+      updateHud();
+      whisperSound();
+      toast("<span class='r'>系统：检测到 14 个光源。</span><br>你又数了一遍。明明只有十三盏。", 3600);
+    } else if (S.off === 8) {
+      S.figure = 0.25;
+      S.figX = 425;
+      draw();
+      stepSound();
+      toast("……", 1400);
+    } else if (S.off === 9) {
+      S.figure = 0.5; S.figX = 350; draw();
+      stepSound();
+      toast("门边有东西。<br>你没看清，也不敢看清。", 3000);
+    } else if (S.off === 10) {
+      S.figure = 0.72; S.figX = 280; draw();
+      stepSound();
+      whisperSound();
+      toast("它挪了一下。", 2400);
+    } else if (S.off === 11) {
+      S.figure = 0.88; S.figX = 220; draw();
+      stepSound();
+      toast("它正对着你。", 2200);
+    } else if (S.off === 12) {
+      S.figure = 1; S.figX = 175; draw();
+      toast("还有最后一盏。", 2200);
+    } else if (left === 0) {
+      finalScare();
+    }
+  }
+
+  // ============ 突脸 ============
+  var faceRAF = null, faceFrame = 0, faceNear = 0;
+
+  function resizeFace() { fcv.width = window.innerWidth; fcv.height = window.innerHeight; }
+
+  function drawFaceLoop() {
+    var w = fcv.width, h = fcv.height;
+    var jx = (Math.random() - 0.5) * w * 0.03;
+    var jy = (Math.random() - 0.5) * h * 0.02;
+    var cx = w / 2 + jx, cy = h / 2 + jy;
+    var k = 1 + faceNear * 0.22;
+    var rx = w * 0.34 * k, ry = h * 0.31 * k;
+
+    fctx.fillStyle = "#060101";
+    fctx.fillRect(0, 0, w, h);
+
+    // 脸
+    var g = fctx.createRadialGradient(cx, cy - ry * 0.12, rx * 0.08, cx, cy, rx * 1.25);
+    g.addColorStop(0, "#efe7de");
+    g.addColorStop(0.5, "#d3c6ba");
+    g.addColorStop(1, "#1a1210");
+    fctx.fillStyle = g;
+    fctx.beginPath(); fctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); fctx.fill();
+
+    // 眼窝
+    function eye(ex, ey, er) {
+      var gg = fctx.createRadialGradient(ex, ey, er * 0.04, ex, ey, er);
+      gg.addColorStop(0, "#000");
+      gg.addColorStop(0.65, "#0b0404");
+      gg.addColorStop(1, "rgba(25,10,10,0)");
+      fctx.fillStyle = gg;
+      fctx.beginPath(); fctx.ellipse(ex, ey, er, er * 1.3, 0, 0, Math.PI * 2); fctx.fill();
+    }
+    var er = rx * 0.25;
+    eye(cx - rx * 0.37, cy - ry * 0.14, er);
+    eye(cx + rx * 0.37, cy - ry * 0.14, er);
+
+    // 嘴
+    var open = 1 + Math.sin(faceFrame * 0.3) * 0.2;
+    fctx.fillStyle = "#000";
+    fctx.beginPath();
+    fctx.ellipse(cx, cy + ry * 0.46, rx * 0.29, ry * 0.19 * open, 0, 0, Math.PI * 2);
+    fctx.fill();
+    fctx.fillStyle = "#ddd3c6";
+    for (var i = -3; i <= 3; i++) {
+      fctx.fillRect(cx + i * rx * 0.073 - 3, cy + ry * 0.46 - ry * 0.19 * open, 6, ry * 0.05);
+    }
+
+    // 暗角
+    var vg = fctx.createRadialGradient(cx, cy, rx * 0.85, cx, cy, rx * 1.85);
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(0,0,0,1)");
+    fctx.fillStyle = vg;
+    fctx.fillRect(0, 0, w, h);
+
+    // 噪点
+    for (var n = 0; n < 800; n++) {
+      fctx.fillStyle = "rgba(255,255,255," + (Math.random() * 0.055) + ")";
+      fctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+    if (Math.random() < 0.4) {
+      fctx.fillStyle = "rgba(180,0,0," + (Math.random() * 0.14) + ")";
+      fctx.fillRect(0, 0, w, h);
+    }
+
+    faceFrame++;
+    faceRAF = requestAnimationFrame(drawFaceLoop);
+  }
+
+  async function showFace(duration, near) {
+    resizeFace();
+    faceNear = near || 0;
+    faceEl.classList.remove("hidden");
+    scream();
+    buzz([0, 100, 60, 220, 70, 320]);
+    if (!faceRAF) faceRAF = requestAnimationFrame(drawFaceLoop);
+    await wait(duration || 1500);
+    faceEl.classList.add("hidden");
+    await wait(1000);
+  }
+
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  // ============ 结局 ============
+  async function finalScare() {
+    S.phase = "end";
+    toastEl.classList.remove("on");
+    // 全黑
+    for (var i = 0; i < 20; i++) {
+      S.darkness = Math.min(1, S.darkness + 0.01);
+      draw();
+      await wait(40);
+    }
+    await wait(1200);
+
+    // 黑暗里出现两个眼睛
+    faceEl.classList.remove("hidden");
+    resizeFace();
+    fcv.width = window.innerWidth; fcv.height = window.innerHeight;
+    var w = fcv.width, h = fcv.height;
+    fctx.fillStyle = "#000";
+    fctx.fillRect(0, 0, w, h);
+    var ex = w / 2, ey = h / 2;
+    fctx.fillStyle = "rgba(230,230,220,.85)";
+    fctx.beginPath(); fctx.arc(ex - 22, ey, 3.4, 0, 7); fctx.fill();
+    fctx.beginPath(); fctx.arc(ex + 22, ey, 3.4, 0, 7); fctx.fill();
+    whisperSound();
+    await wait(1600);
+
+    // 眨眼
+    fctx.fillStyle = "#000";
+    fctx.fillRect(0, 0, w, h);
+    await wait(420);
+    fctx.fillStyle = "rgba(240,240,235,.95)";
+    fctx.beginPath(); fctx.arc(ex - 22, ey, 4.2, 0, 7); fctx.fill();
+    fctx.beginPath(); fctx.arc(ex + 22, ey, 4.2, 0, 7); fctx.fill();
+    buzz(80);
+    await wait(700);
+
+    // 正戏
+    faceEl.classList.add("hidden");
+    await wait(300);
+    await showFace(1700, 1);
+
+    // 回到游戏 → 多出来的那一盏
+    faceEl.classList.add("hidden");
+    S.extraLamp = true;
+    S.darkness = 0.94;
+    S.figure = 0;
+    draw();
+    // 顶部中央的第十四盏灯（在你身后）
+    var glow = function () {
+      var g2 = ctx.createRadialGradient(240, 26, 1, 240, 26, 100);
+      g2.addColorStop(0, "rgba(255,235,190,.95)");
+      g2.addColorStop(0.3, "rgba(255,220,150,.35)");
+      g2.addColorStop(1, "rgba(255,220,150,0)");
+      ctx.fillStyle = g2;
+      ctx.beginPath(); ctx.arc(240, 26, 100, 0, 7); ctx.fill();
+      ctx.fillStyle = "#fff6dd";
+      ctx.beginPath(); ctx.arc(240, 26, 9, 0, 7); ctx.fill();
+    };
+    glow();
+    S.extraLampGlow = glow;
+    updateHud();
+    hudLeft.textContent = "1";
+    toast("<span class='w'>还有一盏。</span><br>它不在屋子里。", 4200);
+    S.phase = "extra";
+    S.extraReady = true;
+  }
+
+  // 点第十四盏
+  async function onTapExtra(e) {
+    if (!S.extraReady) return;
+    S.extraReady = false;
+    S.phase = "end";
+    toastEl.classList.remove("on");
+    await wait(400);
+    await showFace(1500, 1.6);
+    ending();
+  }
+
+  function ending() {
+    faceEl.classList.add("hidden");
+    document.getElementById("endTitle").textContent = "关 完 了";
+    document.getElementById("endBody").innerHTML =
+      "<p>十三盏，你都关了。</p>" +
+      "<p>第十四盏还亮着。</p>" +
+      "<p class='hl'>它不在屋子里。</p>" +
+      "<p style='margin-top:14px;color:#8a8178;font-size:12px'>——它在看你屏幕的这一面。</p>";
+    endingEl.classList.remove("hidden");
+  }
+
+  // ============ 事件 ============
+  var lastTap = 0;
+  function tapGuard() {
+    var now = Date.now();
+    if (now - lastTap < 400) return false;
+    lastTap = now;
+    return true;
+  }
+
+  cv.addEventListener("touchstart", function (e) {
+    if (!tapGuard()) return;
+    if (S.phase === "extra") { onTapExtra(e); return; }
+    var p = canvasPos(e);
+    // 第十四盏灯在顶部中央，用大范围命中
+    if (S.phase === "extra" || (S.extraReady && p.y < 110 && Math.abs(p.x - 240) < 130)) {
+      onTapExtra(e);
+      return;
+    }
+    onTap(e);
+  }, { passive: false });
+
+  cv.addEventListener("click", function (e) {
+    if (!tapGuard()) return;
+    if (S.phase === "extra") { onTapExtra(e); return; }
+    var p = canvasPos(e);
+    if (S.extraReady && p.y < 110 && Math.abs(p.x - 240) < 130) { onTapExtra(e); return; }
+    onTap(e);
+  });
+
+  // ============ 启动 ============
+  buildLamps();
+  draw();
+  updateHud();
+
+  document.getElementById("startBtn").addEventListener("click", function () {
+    initAudio();
+    tone(520, 0.08, "sine", 0.04);
+    document.getElementById("start").classList.add("hidden");
+    S.started = true;
+    toast("把灯一盏一盏关掉。<br>点发亮的地方。", 3200);
+  });
+
+  document.getElementById("shareBtn").addEventListener("click", function () {
+    var url = location.href;
+    var txt = "今晚一个人在家，要关掉十三盏灯。你来试试：" + url;
+    if (navigator.share) {
+      navigator.share({ title: "关灯", text: txt, url: url }).catch(function () {});
+      return;
+    }
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(txt).then(function () {
+        document.getElementById("shareBtn").textContent = "已复制，去粘给他";
+      }).catch(function () {
+        document.getElementById("shareBtn").textContent = "长按地址栏复制";
+      });
+      return;
+    }
+    document.getElementById("shareBtn").textContent = "长按地址栏复制";
+  });
+
+})();
+</script>
+
+</body>
+</html>
