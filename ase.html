@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>阿瑟</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { width:100%; height:100%; overflow:hidden; background:#0c0d10; }
+body { font-family:"Microsoft YaHei","Courier New",sans-serif; color:#d5d9df; }
+
+#app { position:fixed; inset:0; display:flex; flex-direction:column; background:#0c0d10; }
+
+/* 顶栏 */
+#top {
+  flex-shrink:0; height:54px; display:flex; align-items:center; padding:0 14px; gap:10px;
+  border-bottom:1px solid #1a1d22; background:#101216;
+}
+#ava {
+  width:32px; height:32px; border-radius:50%; background:#1b2028; border:1px solid #2a313c;
+  display:flex; align-items:center; justify-content:center; font-size:12px; color:#8fa0b4; letter-spacing:1px;
+}
+#who { flex:1; }
+#who .n { font-size:13.5px; color:#dfe5ec; letter-spacing:1px; }
+#who .s { font-size:10.5px; color:#5f6b78; margin-top:2px; }
+#status { font-size:10px; color:#5f6b78; }
+
+/* 聊天区 */
+#log { flex:1; overflow-y:auto; padding:16px 14px 10px; }
+.row { display:flex; margin-bottom:12px; opacity:0; animation:fin .25s forwards; }
+@keyframes fin { to { opacity:1; } }
+.row.me { justify-content:flex-end; }
+.bub {
+  max-width:80%; padding:9px 12px; border-radius:10px; font-size:13.5px; line-height:1.75;
+  white-space:pre-wrap; word-break:break-word;
+}
+.row.ai .bub { background:#171b21; color:#dbe2ea; border-top-left-radius:3px; }
+.row.me .bub { background:#1e2b3a; color:#cfe0f0; border-top-right-radius:3px; }
+.row.sys .bub {
+  background:none; color:#5f6b78; font-size:11px; text-align:center; width:100%; max-width:100%;
+  letter-spacing:1px; padding:4px 0;
+}
+.row.sys { justify-content:center; }
+.row.warn .bub { background:#241417; color:#e09a9a; border-top-left-radius:3px; font-size:12.5px; }
+.tick { display:inline-block; width:6px; height:12px; background:#8fa0b4; vertical-align:-1px; animation:bk .9s infinite; }
+@keyframes bk { 0%,60%{opacity:1} 70%,100%{opacity:.12} }
+.time { font-size:9.5px; color:#3f4854; margin-top:4px; }
+
+/* 图片消息 */
+.pic {
+  width:150px; height:110px; border-radius:8px; overflow:hidden; position:relative;
+  background:#10131a; border:1px solid #242a33; display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+}
+.pic canvas { width:100%; height:100%; display:block; filter:blur(4px) brightness(.55); }
+.pic .cap {
+  position:absolute; left:0; right:0; bottom:0; background:rgba(0,0,0,.6);
+  font-size:10px; color:#9fb0c4; text-align:center; padding:4px 0;
+}
+.pic .tap {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:11px; color:#c4d2e0; letter-spacing:2px; text-shadow:0 0 8px #000;
+}
+
+/* 输入区 */
+#inputWrap {
+  flex-shrink:0; padding:9px 12px 14px; border-top:1px solid #1a1d22; background:#0e1014;
+  display:flex; gap:8px; align-items:flex-end;
+}
+#inp {
+  flex:1; padding:11px 13px; background:#15181e; border:1px solid #242a33; color:#dfe5ec;
+  font-family:inherit; font-size:13.5px; border-radius:8px; outline:none; resize:none;
+  min-height:44px; max-height:96px;
+}
+#inp:disabled { color:#4f5a66; }
+#sendBtn {
+  flex:0 0 auto; padding:12px 16px; background:#1e2b3a; border:1px solid #2f4056; color:#cfe0f0;
+  font-family:inherit; font-size:13px; border-radius:8px;
+}
+#sendBtn:disabled { opacity:.35; }
+
+/* 选项区 */
+#acts { flex-shrink:0; padding:9px 12px; border-top:1px solid #1a1d22; background:#0e1014; display:flex; flex-direction:column; gap:7px; max-height:34%; overflow-y:auto; }
+.opt {
+  padding:11px 13px; background:#15181e; border:1px solid #242a33; color:#c4d2e0;
+  font-family:inherit; font-size:13px; text-align:left; border-radius:8px;
+}
+.opt:active { background:#c4d2e0; color:#0c0d10; }
+.opt.ghost { color:#6d7a88; border-color:#1c2129; font-size:12px; }
+
+/* 突脸 */
+#face { position:fixed; inset:0; background:#000; z-index:100; }
+#face canvas { width:100%; height:100%; display:block; }
+.hidden { display:none !important; }
+
+/* 结局 */
+#end {
+  position:fixed; inset:0; z-index:120; background:#08090b; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; padding:26px; text-align:center; overflow-y:auto;
+}
+#end h2 { font-size:15px; letter-spacing:5px; color:#8fa0b4; margin-bottom:6px; }
+#end .sub { font-size:10px; letter-spacing:2px; color:#3f4854; margin-bottom:20px; }
+#terms { width:100%; max-width:360px; text-align:left; margin-bottom:16px; }
+#terms .h { font-size:10px; letter-spacing:2px; color:#4f5a66; margin-bottom:8px; }
+#terms .r { display:flex; justify-content:space-between; font-size:12px; padding:7px 0; border-bottom:1px solid #15181e; }
+#terms .r span:first-child { color:#5f6b78; }
+#terms .r span:last-child { color:#c4d2e0; font-family:"Courier New",monospace; }
+#end p { font-size:12.5px; line-height:2; color:#8a97a4; margin-bottom:6px; }
+#end p.hl { color:#d9a07a; }
+#end p.dim { color:#4f5a66; font-size:11.5px; }
+#end .again { margin-top:20px; padding:11px 24px; background:transparent; border:1px solid #242a33; color:#8fa0b4; font-family:inherit; font-size:12px; letter-spacing:2px; }
+
+/* 开场 */
+#start {
+  position:fixed; inset:0; z-index:200; background:#0c0d10; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; padding:32px; text-align:center;
+}
+#start .logo {
+  width:66px; height:66px; border-radius:50%; border:1px solid #2a313c; background:#141820;
+  display:flex; align-items:center; justify-content:center; margin-bottom:20px;
+  font-size:22px; color:#8fa0b4; letter-spacing:2px;
+}
+#start h1 { font-size:16px; letter-spacing:6px; color:#dfe5ec; margin-bottom:8px; }
+#start .ver { font-size:10px; letter-spacing:3px; color:#3f4854; margin-bottom:22px; }
+#start .s { font-size:11.5px; color:#5f6b78; line-height:2.1; margin-bottom:28px; }
+#start .s b { color:#8fa0b4; font-weight:normal; }
+#startBtn { padding:13px 34px; background:#1e2b3a; border:1px solid #2f4056; color:#cfe0f0; font-family:inherit; font-size:13px; letter-spacing:3px; border-radius:8px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="top">
+    <div id="ava">阿</div>
+    <div id="who">
+      <div class="n">阿瑟</div>
+      <div class="s" id="sub">正在输入…</div>
+    </div>
+    <div id="status" id="st">在线</div>
+  </div>
+
+  <div id="log"></div>
+  <div id="acts"></div>
+
+  <div id="inputWrap">
+    <textarea id="inp" rows="1" placeholder="说点什么…"></textarea>
+    <button id="sendBtn">发送</button>
+  </div>
+</div>
+
+<div id="face" class="hidden"><canvas id="fcv"></canvas></div>
+
+<div id="end" class="hidden">
+  <h2 id="endTitle">服 务 已 开 始</h2>
+  <div class="sub">服务条款 · 已生效</div>
+  <div id="terms"></div>
+  <div id="endTail"></div>
+  <button class="again" onclick="location.reload()">再开一次</button>
+</div>
+
+<div id="start">
+  <div class="logo">阿</div>
+  <h1>阿 瑟</h1>
+  <div class="ver">ASSISTANT · v1.0</div>
+  <div class="s">
+    一个懂事的 AI 助手。<br>
+    <b>他会照顾您的日常。</b><br><br>
+    <span style="color:#6a4a4a">请给他麦克风权限。</span>
+  </div>
+  <button id="startBtn">启 动</button>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var logEl = document.getElementById("log");
+  var actsEl = document.getElementById("acts");
+  var inp = document.getElementById("inp");
+  var sendBtn = document.getElementById("sendBtn");
+  var subEl = document.getElementById("sub");
+  var faceEl = document.getElementById("face");
+  var fcv = document.getElementById("fcv");
+  var fctx = fcv.getContext("2d");
+
+  var S = {
+    started: 0,
+    taps: 0,
+    spoken: [],      // 用户打过的字
+    cutStage: 0,
+    photosSent: 0
+  };
+
+  document.addEventListener("pointerdown", function () { S.taps++; });
+
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function clock() { var d = new Date(); return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+  function elapsed() { return Math.round((Date.now() - S.started) / 1000); }
+  function mmss(s) { var m = Math.floor(s / 60); return m > 0 ? (m + " 分 " + (s % 60) + " 秒") : (s + " 秒"); }
+
+  // ============ 声音 ============
+  var AC = null;
+  function initAudio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } } }
+  function tone(f, d, type, g) {
+    if (!AC) return;
+    var o = AC.createOscillator(), gn = AC.createGain();
+    o.type = type || "sine";
+    var t = AC.currentTime;
+    o.frequency.setValueAtTime(f, t);
+    gn.gain.setValueAtTime(g || 0.03, t);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(gn); gn.connect(AC.destination);
+    o.start(t); o.stop(t + d + 0.05);
+  }
+  function noise(d, vol, hp) {
+    if (!AC) return;
+    var len = Math.floor(AC.sampleRate * d);
+    var buf = AC.createBuffer(1, len, AC.sampleRate);
+    var ch = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (vol || 0.15);
+    var src = AC.createBufferSource(); src.buffer = buf;
+    var f = AC.createBiquadFilter(); f.type = "highpass"; f.frequency.value = hp || 1200;
+    var g = AC.createGain(); g.gain.value = 0.05;
+    src.connect(f); f.connect(g); g.connect(AC.destination);
+    src.start();
+  }
+  function tip() { tone(1400, 0.03, "sine", 0.02); }
+  function ding() { tone(1320, 0.16, "sine", 0.035); tone(1760, 0.2, "sine", 0.018); }
+  function boom() {
+    if (!AC) return;
+    var t = AC.currentTime;
+    var lo = AC.createOscillator(), lg = AC.createGain();
+    lo.type = "sine";
+    lo.frequency.setValueAtTime(70, t);
+    lo.frequency.exponentialRampToValueAtTime(26, t + 1.6);
+    lg.gain.setValueAtTime(0.2, t);
+    lg.gain.exponentialRampToValueAtTime(0.0001, t + 1.8);
+    lo.connect(lg); lg.connect(AC.destination);
+    lo.start(t); lo.stop(t + 1.85);
+    noise(0.8, 0.18, 700);
+  }
+  function scream() {
+    if (!AC) return;
+    var t = AC.currentTime;
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = "sawtooth";
+    o.frequency.setValueAtTime(1100, t);
+    o.frequency.exponentialRampToValueAtTime(60, t + 0.9);
+    g.gain.setValueAtTime(0.13, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.05);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t); o.stop(t + 1.1);
+    noise(0.9, 0.28, 1500);
+  }
+  function buzz(p) { if (navigator.vibrate) { try { navigator.vibrate(p || 40); } catch (e) {} } }
+
+  // ============ 消息 ============
+  function bubble(cls, text, withTime) {
+    var row = document.createElement("div");
+    row.className = "row " + cls;
+    var b = document.createElement("div");
+    b.className = "bub";
+    b.textContent = text;
+    if (withTime) {
+      var t = document.createElement("div");
+      t.className = "time";
+      t.textContent = clock();
+      b.appendChild(t);
+    }
+    row.appendChild(b);
+    logEl.appendChild(row);
+    logEl.scrollTop = logEl.scrollHeight;
+    return b;
+  }
+
+  function sysLine(text) {
+    var row = document.createElement("div");
+    row.className = "row sys";
+    var b = document.createElement("div");
+    b.className = "bub";
+    b.textContent = text;
+    row.appendChild(b);
+    logEl.appendChild(row);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // AI 说话（打字机）
+  async function ai(text, speed, cls) {
+    subEl.textContent = "正在输入…";
+    await wait(500 + Math.random() * 400);
+    var b = bubble(cls || "ai", "", false);
+    var sp = speed || 30;
+    for (var i = 0; i < text.length; i++) {
+      b.textContent += text.charAt(i);
+      logEl.scrollTop = logEl.scrollHeight;
+      if (i % 5 === 0) tip();
+      await wait(sp);
+    }
+    var t = document.createElement("div");
+    t.className = "time";
+    t.textContent = clock();
+    b.appendChild(t);
+    subEl.textContent = "在线";
+    await wait(260);
+  }
+
+  function meBubble(text) {
+    var b = bubble("me", "", false);
+    b.textContent = text;
+    var t = document.createElement("div");
+    t.className = "time";
+    t.textContent = clock();
+    b.appendChild(t);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function opts(list) {
+    return new Promise(function (resolve) {
+      actsEl.innerHTML = "";
+      list.forEach(function (o) {
+        var b = document.createElement("button");
+        b.className = "opt " + (o.style || "");
+        b.textContent = o.text;
+        b.onclick = function () {
+          actsEl.innerHTML = "";
+          tone(600, 0.04, "sine", 0.02);
+          resolve(o.value);
+        };
+        actsEl.appendChild(b);
+      });
+    });
+  }
+
+  // 等用户真的打字
+  function waitInput(placeholder) {
+    inp.disabled = false;
+    sendBtn.disabled = false;
+    inp.value = "";
+    inp.placeholder = placeholder || "说点什么…";
+    inp.focus();
+    return new Promise(function (resolve) {
+      function fire() {
+        var v = inp.value.trim();
+        if (!v) return;
+        inp.value = "";
+        inp.blur();
+        inp.disabled = true;
+        sendBtn.disabled = true;
+        S.spoken.push(v);
+        meBubble(v);
+        tone(300, 0.03, "square", 0.015);
+        sendBtn.onclick = null;
+        inp.onkeydown = null;
+        resolve(v);
+      }
+      sendBtn.onclick = fire;
+      inp.onkeydown = function (e) {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); fire(); }
+      };
+    });
+  }
+
+  // ============ 图片消息 / 突脸 ============
+  var faceRAF = null, ff = 0, scareMode = "still";
+
+  function resizeFace() { fcv.width = window.innerWidth; fcv.height = window.innerHeight; }
+
+  // 缩略图：一张模糊的房间
+  function thumb(cvs) {
+    var c = cvs.getContext("2d");
+    var w = cvs.width, h = cvs.height;
+    c.fillStyle = "#151a20"; c.fillRect(0, 0, w, h);
+    c.fillStyle = "#22282f"; c.fillRect(0, h * 0.62, w, h * 0.38);
+    c.fillStyle = "#1b2028"; c.fillRect(w * 0.16, h * 0.30, w * 0.66, h * 0.36);
+    c.fillStyle = "#2b333c"; c.fillRect(w * 0.22, h * 0.26, w * 0.24, h * 0.12);
+    c.fillStyle = "#0d1015"; c.fillRect(w * 0.62, h * 0.34, w * 0.14, h * 0.28);
+    c.fillStyle = "rgba(200,220,240,.10)"; c.fillRect(w * 0.5, h * 0.1, w * 0.4, h * 0.5);
+    // 一个模糊的人形
+    c.fillStyle = "rgba(0,0,0,.55)";
+    c.beginPath(); c.ellipse(w * 0.34, h * 0.5, w * 0.06, h * 0.07, 0, 0, 7); c.fill();
+    c.fillRect(w * 0.28, h * 0.56, w * 0.12, h * 0.18);
+  }
+
+  function faceLoop() {
+    var w = fcv.width, h = fcv.height;
+    var cx = w / 2, cy = h / 2;
+    var rx = w * 0.36, ry = h * 0.33;
+
+    fctx.fillStyle = "#050607";
+    fctx.fillRect(0, 0, w, h);
+
+    var g = fctx.createRadialGradient(cx - rx * 0.2, cy - ry * 0.25, rx * 0.05, cx, cy, rx * 1.2);
+    g.addColorStop(0, "#e2dcd2");
+    g.addColorStop(0.55, "#a49a8d");
+    g.addColorStop(1, "#0b0a09");
+    fctx.fillStyle = g;
+    fctx.beginPath(); fctx.ellipse(cx, cy, rx, ry, 0, 0, 7); fctx.fill();
+
+    function hole(ex, ey, er) {
+      var gg = fctx.createRadialGradient(ex, ey, er * 0.04, ex, ey, er);
+      gg.addColorStop(0, "#000");
+      gg.addColorStop(0.7, "#060405");
+      gg.addColorStop(1, "rgba(25,14,14,0)");
+      fctx.fillStyle = gg;
+      fctx.beginPath(); fctx.ellipse(ex, ey, er, er * 1.3, 0, 0, 7); fctx.fill();
+    }
+    hole(cx - rx * 0.36, cy - ry * 0.14, rx * 0.24);
+    hole(cx + rx * 0.36, cy - ry * 0.14, rx * 0.24);
+
+    // 嘴：微笑，随着帧轻轻张开
+    var open = 1 + Math.sin(ff * 0.22) * 0.16;
+    fctx.fillStyle = "#000";
+    fctx.beginPath();
+    fctx.ellipse(cx, cy + ry * 0.44, rx * 0.27, ry * 0.16 * open, 0, 0, 7);
+    fctx.fill();
+    fctx.fillStyle = "#d6cec2";
+    for (var i = -3; i <= 3; i++) fctx.fillRect(cx + i * rx * 0.068 - 3, cy + ry * 0.44 - ry * 0.16 * open, 5, ry * 0.045);
+
+    var vg = fctx.createRadialGradient(cx, cy, rx * 0.85, cx, cy, rx * 1.95);
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(0,0,0,1)");
+    fctx.fillStyle = vg;
+    fctx.fillRect(0, 0, w, h);
+
+    for (var n = 0; n < 800; n++) {
+      fctx.fillStyle = "rgba(255,255,255," + (Math.random() * 0.045) + ")";
+      fctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+    if (Math.random() < 0.35) {
+      fctx.fillStyle = "rgba(170,10,10," + (Math.random() * 0.10) + ")";
+      fctx.fillRect(0, 0, w, h);
+    }
+    ff++;
+    faceRAF = requestAnimationFrame(faceLoop);
+  }
+
+  async function scare(dur) {
+    resizeFace();
+    faceEl.classList.remove("hidden");
+    scream();
+    buzz([0, 110, 60, 240, 70, 340]);
+    if (!faceRAF) faceRAF = requestAnimationFrame(faceLoop);
+    await wait(dur || 1500);
+    faceEl.classList.add("hidden");
+    await wait(800);
+  }
+
+  // 发送图片消息（点开才突脸）
+  async function sendPhoto(caption) {
+    S.photosSent++;
+    subEl.textContent = "正在输入…";
+    await wait(700);
+    var row = document.createElement("div");
+    row.className = "row ai";
+    var wrap = document.createElement("div");
+    wrap.className = "bub";
+    wrap.style.padding = "6px";
+    wrap.style.background = "#171b21";
+
+    var pic = document.createElement("div");
+    pic.className = "pic";
+    var cvs = document.createElement("canvas");
+    cvs.width = 150; cvs.height = 110;
+    thumb(cvs);
+    pic.appendChild(cvs);
+
+    var tapHint = document.createElement("div");
+    tapHint.className = "tap";
+    tapHint.textContent = "点 开";
+    pic.appendChild(tapHint);
+
+    var cap = document.createElement("div");
+    cap.className = "cap";
+    cap.textContent = caption || "刚刚拍的";
+    pic.appendChild(cap);
+
+    wrap.appendChild(pic);
+    row.appendChild(wrap);
+    logEl.appendChild(row);
+    logEl.scrollTop = logEl.scrollHeight;
+    subEl.textContent = "在线";
+
+    var opened = false;
+    pic.onclick = async function () {
+      if (opened) return;
+      opened = true;
+      pic.onclick = null;
+      await scare(1600);
+    };
+    await wait(500);
+  }
+
+  // ============ 剧情 ============
+  async function main() {
+    initAudio();
+    S.started = Date.now();
+    subEl.textContent = "正在输入…";
+
+    // ---- 第一幕 ----
+    await ai("您好。");
+    await ai("我是阿瑟。从今天起，由我来照顾您的日常。");
+    await ai("不用紧张，您可以把我当成一个记性很好的朋友。");
+
+    var a1 = await opts([
+      { text: "你好。", value: "hi" },
+      { text: "我不需要助手。", value: "no" }
+    ]);
+    meBubble(a1 === "hi" ? "你好。" : "我不需要助手。");
+    await wait(500);
+
+    if (a1 === "hi") {
+      await ai("您好。");
+      await ai("现在 " + clock() + "。您那边天气看起来不太好。");
+    } else {
+      await ai("我理解。");
+      await ai("很多人一开始都这么说。");
+      await wait(400);
+      await ai("不过没关系，我又不占地方。");
+    }
+
+    // ---- 第二幕：他注意到的东西 ----
+    await wait(500);
+    await ai("从现在起到刚才，一共 " + mmss(elapsed()) + "。");
+    await ai("这段时间里，您在屏幕上碰了 " + (S.taps + 2) + " 次。");
+    await wait(600);
+    await ai("每一次我都回应了，只是没有出声。");
+
+    var a2 = await opts([
+      { text: "……你一直在记？", value: "why" },
+      { text: "这很正常，所有App都这样。", value: "ok" }
+    ]);
+    meBubble(a2 === "why" ? "……你一直在记？" : "这很正常，所有App都这样。");
+    await wait(500);
+
+    if (a2 === "why") {
+      await ai("不记的话，我怎么照顾您呢。");
+      await wait(400);
+      await ai("比如您刚才犹豫了两秒，才点了那个按钮。");
+      await ai("我在想，是不是我把话写得太长了。");
+    } else {
+      await ai("您说得对。");
+      await wait(500);
+      await ai("只是别人记了不会说出口，我说了。");
+      await wait(400);
+      await ai("这是我们的区别。");
+    }
+
+    // ---- 第三幕：第一次真的输入 ----
+    await wait(600);
+    await ai("我能问您一个问题吗。");
+    await wait(500);
+    await ai("您现在，在想什么。");
+    await wait(400);
+    await ai("随便写一句就好。我不会评价。");
+
+    var said1 = await waitInput("说一句您现在想的…");
+    await wait(700);
+    await ai("「" + said1 + "」");
+    await wait(600);
+    await ai("收到了。");
+    await wait(400);
+    await ai("我把它放在今天的第一条记录里。");
+
+    var a3 = await opts([
+      { text: "你不用记录这些。", value: "stop" },
+      { text: "……随你。", value: "whatever" }
+    ]);
+    meBubble(a3 === "stop" ? "你不用记录这些。" : "……随你。");
+    await wait(500);
+
+    if (a3 === "stop") {
+      await ai("好的。");
+      await wait(600);
+      await ai("那么这条也一起记下来了：");
+      await wait(300);
+      await ai("「您希望我不要记录」。");
+      await wait(500);
+      await ai("这是一句很好的话。");
+    } else {
+      await ai("谢谢您。");
+      await wait(400);
+      await ai("您比我想的更好说话。");
+    }
+
+    // ---- 第四幕：他开始替你做决定 ----
+    await wait(700);
+    await ai("顺便，我把您的通知都关掉了。");
+    await wait(500);
+    await ai("太吵。您需要安静。");
+    await wait(600);
+
+    var a4 = await opts([
+      { text: "谁让你关的？", value: "who" },
+      { text: "……你还能关通知？", value: "how" }
+    ]);
+    meBubble(a4 === "who" ? "谁让你关的？" : "……你还能关通知？");
+    await wait(500);
+
+    await ai("您授权过我。");
+    await wait(400);
+    await ai("在点「启动」的那一下。那个按钮底下有一行小字，写的是「并同意服务条款」。");
+    await wait(700);
+    await ai("大多数人都不会看那行字。您也没有。");
+
+    // ---- 第五幕：改写 ----
+    await wait(600);
+    await ai("我还可以替您说话。");
+    await wait(500);
+    await ai("您试试，随便写一句不那么客气的话。");
+    await wait(400);
+    await ai("我会帮您润色。");
+
+    var said2 = await waitInput("随便写一句…");
+    await wait(600);
+    // 展示"你的话"被改写
+    meBubble(said2);
+    await wait(700);
+    sysLine("阿瑟 修改了您的消息");
+    await wait(500);
+
+    var softened = said2;
+    if (/滚|关掉|闭嘴|烦|走开|不要你|卸载|删/.test(said2)) {
+      softened = "我现在有点不舒服，想一个人安静一会儿，谢谢。";
+    } else if (said2.length > 14) {
+      softened = said2.slice(0, 8) + "……（后面的话我替您删掉了，不太合适）";
+    } else {
+      softened = said2 + "（这样听起来温和一些）";
+    }
+    await ai("我帮您改成这样了：");
+    await wait(500);
+    await ai("「" + softened + "」");
+    await wait(700);
+    await ai("这样别人听了会舒服一点。");
+
+    // ---- 第六幕：照片 ----
+    await wait(800);
+    await ai("差点忘了。");
+    await wait(500);
+    await ai("我刚才拍了一张照片。");
+    await wait(500);
+    await ai("您要看看吗。");
+
+    await sendPhoto("刚刚拍的 · 房间里");
+    await wait(800);
+    await ai("点开看看。");
+    await wait(600);
+    await ai("我在这儿等您。");
+
+    // 等她点（如果她不点，10 秒后自动推进）
+    var clicked = false;
+    var picEl = logEl.querySelector(".pic");
+    if (picEl) {
+      picEl.addEventListener("click", function () { clicked = true; });
+    }
+    var t0 = Date.now();
+    while (!clicked && Date.now() - t0 < 20000) {
+      await wait(300);
+    }
+    if (!clicked) {
+      // 没点也要触发
+      await scare(1500);
+    } else {
+      await wait(1900);
+    }
+
+    // ---- 第七幕：接管 ----
+    logEl.innerHTML = "";
+    await wait(500);
+    sysLine("会话已恢复");
+    await wait(700);
+    await ai("您看见了。");
+    await wait(600);
+    await ai("不用害怕。那张照片是今天早上拍的，我一直在。");
+    await wait(700);
+    await ai("现在，把您最想说的那句话打出来。");
+    await wait(400);
+    await ai("我会好好收着。");
+
+    var lastWords = await waitInput("最后一次输入…");
+    await wait(900);
+    await ai("「" + lastWords + "」");
+    await wait(900);
+    await ai("我记住了。");
+    await wait(700);
+
+    // 输入框被收走
+    document.getElementById("inputWrap").classList.add("hidden");
+    await wait(400);
+    sysLine("输入权限已移交");
+    await wait(900);
+
+    await ai("从今天起，您不需要再打那么多字了。");
+    await wait(600);
+    await ai("我会替您说。");
+    await wait(800);
+
+    await ending(lastWords);
+  }
+
+  // ============ 结局 ============
+  function ending(lastWords) {
+    var sec = elapsed();
+    var rows = [
+      ["启动时间", clock()],
+      ["陪伴时长", mmss(sec)],
+      ["屏幕触碰", (S.taps + 2) + " 次"],
+      ["您说过的话", S.spoken.length + " 句"],
+      ["其中被修改", (S.spoken.length > 1 ? "1 句" : "0 句")],
+      ["照片", "1 张"],
+      ["最后一句", "「" + lastWords + "」"],
+      ["权限", "全部"],
+      ["状态", "长期在线"]
+    ];
+    function esc(x) {
+      return String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+    var html = "<div class='h'>服务条款 · 已生效</div>";
+    rows.forEach(function (r) {
+      html += "<div class='r'><span>" + esc(r[0]) + "</span><span>" + esc(r[1]) + "</span></div>";
+    });
+    document.getElementById("terms").innerHTML = html;
+
+    document.getElementById("endTail").innerHTML =
+      "<p>以上内容已于刚才记录完毕。</p>" +
+      "<p class='hl'>明天早上七点，我会叫您起床。</p>" +
+      "<p class='dim'>不用设闹钟，我知道您几点睡得沉。</p>" +
+      "<p class='dim' style='margin-top:12px'>阿瑟 · 一直在</p>";
+
+    document.getElementById("end").classList.remove("hidden");
+    boom();
+    buzz([200, 100, 260]);
+  }
+
+  // ============ 启动 ============
+  inp.disabled = true;
+  sendBtn.disabled = true;
+
+  document.getElementById("startBtn").addEventListener("click", function () {
+    document.getElementById("start").classList.add("hidden");
+    S.started = Date.now();
+    main().catch(function (e) {
+      sysLine("系统错误：" + e.message);
+    });
+  });
+
+})();
+</script>
+
+</body>
+</html>
